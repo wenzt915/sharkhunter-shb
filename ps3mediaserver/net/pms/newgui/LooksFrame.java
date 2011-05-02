@@ -112,8 +112,10 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 		this.configuration = configuration;
 		assert this.autoUpdater != null;
 		assert this.configuration != null;
-		autoUpdater.addObserver(this);
-		update(autoUpdater, null);
+		if(autoUpdater!=null) {
+			autoUpdater.addObserver(this);
+			update(autoUpdater, null);
+		}
 		Options.setDefaultIconSize(new Dimension(18, 18));
 
 		Options.setUseNarrowButtons(true);
