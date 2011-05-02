@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
@@ -282,14 +283,34 @@ public class PmsConfiguration {
 		configuration.setFileName(PROFILE_PATH);
 
 		File pmsConfFile = new File(PROFILE_PATH);
-
 		if (pmsConfFile.exists() && pmsConfFile.isFile()) {
 			configuration.load(PROFILE_PATH);
+			mergeConf(pmsConfPath);
 		}
 
 		tempFolder = new TempFolder(getString(KEY_TEMP_FOLDER_PATH, null));
 		programPaths = createProgramPathsChain(configuration);
 		Locale.setDefault(new Locale(getLanguage()));
+	}
+	
+	private void mergeConf(String path) {
+		File mFile=new File(path+".new");
+		if(!mFile.exists()) // no file to merge give up early
+			return;
+		PropertiesConfiguration tmp=new PropertiesConfiguration();
+		try {
+			tmp.load(mFile.getAbsolutePath());
+			Iterator i=tmp.getKeys();
+			while(i.hasNext()) {
+				String key=(String) i.next();
+				if(configuration.containsKey(key))
+					continue;
+				configuration.setProperty(key, tmp.getProperty(key));
+			}
+			mFile.delete();
+			configuration.save();
+		} catch (ConfigurationException e) {
+		}
 	}
 
 	/**

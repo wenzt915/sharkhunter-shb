@@ -127,7 +127,7 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "1.21.2"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.21.2 - SHB2a"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
@@ -355,10 +355,10 @@ public class PMS {
 	private boolean init() throws Exception {
 		registry = new WinUtils();
 
-		AutoUpdater autoUpdater = new AutoUpdater(UPDATE_SERVER_URL, VERSION);
+		AutoUpdater autoUpdater = null;//new AutoUpdater(UPDATE_SERVER_URL, VERSION);
 		if (System.getProperty("console") == null) {//$NON-NLS-1$
 			frame = new LooksFrame(autoUpdater, configuration);
-			autoUpdater.pollServer();
+			//autoUpdater.pollServer();
 		} else {
 			System.out.println("GUI environment not available"); //$NON-NLS-1$
 			System.out.println("Switching to console mode"); //$NON-NLS-1$
