@@ -30,6 +30,7 @@ import java.util.TimeZone;
 
 import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
+import net.pms.dlna.DLNAMediaAudio;
 import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 
@@ -180,6 +181,21 @@ public class RequestV2 extends HTTPResource {
 			String id = argument.substring(argument.indexOf("get/") + 4, argument.lastIndexOf("/"));
 			id = id.replace("%24", "$"); // popcorn hour ?
 			ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
+			if(files==null||files.size()==0) { // nothing found
+				String tmp=(String)PMS.getConfiguration().getCustomProperty("remote_control");
+				if(tmp!=null&&!tmp.equalsIgnoreCase("false")) {
+					ArrayList<RendererConfiguration> renders=PMS.get().getRenders();
+					for(int i=0;i<renders.size();i++) {
+						RendererConfiguration r=renders.get(i);
+						if(r.equals(mediaRenderer))
+							continue;
+						files = PMS.get().getRootFolder(r).getDLNAResources(id, false, 0, 0, r);
+						if(files!=null&&files.size()!=0) {
+							break;
+						}
+					}
+				}
+			}
 			if (transferMode != null) {
 				output.setHeader("TransferMode.DLNA.ORG", transferMode);
 			}
@@ -351,7 +367,7 @@ public class RequestV2 extends HTTPResource {
 				//PMS.debug(content);
 				objectID = getEnclosingValue(content, "<ObjectID>", "</ObjectID>");
 				String containerID = null;
-				if ((objectID == null || objectID.length() == 0) && xbox) {
+				if ((objectID == null || objectID.length() == 0) /*&& xbox*/) {
 					containerID = getEnclosingValue(content, "<ContainerID>", "</ContainerID>");
 					if (!containerID.contains("$")) {
 						objectID = "0";
@@ -405,16 +421,32 @@ public class RequestV2 extends HTTPResource {
 						}
 					}
 				}
-				
-				ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer);
+				else if (soapaction.contains("ContentDirectory:1#Search")) 
+					searchCriteria=getEnclosingValue(content,"<SearchCriteria>","</SearchCriteria>");
+				ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
+							searchCriteria);
 				if (searchCriteria != null && files != null) {
+					searchCriteria=searchCriteria.toLowerCase();
 					for(int i=files.size()-1;i>=0;i--) {
-						if (!files.get(i).getName().equals(searchCriteria))
+						DLNAResource res=files.get(i);
+						if(res.isSearched())
+							continue;
+						boolean keep=res.getName().toLowerCase().indexOf(searchCriteria)!=-1;
+						if(res.media!=null) {
+							for(int j=0;j<res.media.audioCodes.size();j++) {
+								DLNAMediaAudio audio=res.media.audioCodes.get(j);
+								keep|=audio.album.toLowerCase().indexOf(searchCriteria)!=-1;
+								keep|=audio.artist.toLowerCase().indexOf(searchCriteria)!=-1;
+								keep|=audio.songname.toLowerCase().indexOf(searchCriteria)!=-1;
+							}
+						}
+						if(!keep) // dump it
 							files.remove(i);
 					}
-					if (files.size() > 0) {
-						files = files.get(0).getChildren();
-					}
+					if(xbox)
+						if (files.size() > 0) {
+							files = files.get(0).getChildren();
+						}
 				}
 				
 				int minus = 0;

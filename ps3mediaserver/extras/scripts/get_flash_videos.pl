@@ -6943,6 +6943,7 @@ GetOptions(
   "add-plugin=s" => \$opt{add_plugin},
   "quality|r=s"  => \$opt{quality},
   "subtitles"    => \$opt{subtitles},
+  "url"          => \$opt{url}
 ) or die "Try $0 --help for more information.\n";
 
 if($opt{version}) {
@@ -7101,6 +7102,11 @@ sub download {
       return 0;
     }
   }
+  
+ # if($opt{url}) {
+#	print "$actual_url\n";
+#	return 1;
+ # }
 
   my $suggested_filename = $suggested_fnames[-1];
 

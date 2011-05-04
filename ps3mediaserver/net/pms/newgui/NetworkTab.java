@@ -312,7 +312,7 @@ public class NetworkTab {
 		cmp.setFont(cmp.getFont().deriveFont(Font.BOLD));
 
 		int y = 39;
-		plugins = new JButton[8];
+		plugins = new JButton[10];
 		for (int i = 0; i < plugins.length; i++) {
 			plugins[i] = new JButton();
 			plugins[i].setVisible(false);
