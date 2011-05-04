@@ -19,6 +19,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -156,7 +157,8 @@ public class PmsConfiguration {
 	 * Note: custom Windows builds that change this value should change the corresponding "$APPDATA\PMS"
 	 * value in nsis/setup.nsi
 	 */
-	private static final String BUILD = "PMS";
+	private static final String BUILD_BASE = "PMS";
+	private static final String BUILD = BUILD_BASE + "-SHB";
 
 	// the default profile name displayed on the renderer
 	private static String HOSTNAME;
@@ -285,9 +287,46 @@ public class PmsConfiguration {
 		File pmsConfFile = new File(PROFILE_PATH);
 		if (pmsConfFile.exists() && pmsConfFile.isFile()) {
 			configuration.load(PROFILE_PATH);
-			mergeConf(pmsConfPath);
+			mergeConf(pmsConfFile.getAbsolutePath());
 		}
+		else {
+			String profileDir = null;
 
+			if (Platform.isWindows()) {
+				String appData = System.getenv("APPDATA");
+				if (appData != null)
+					profileDir = String.format("%s\\%s", appData, BUILD_BASE);
+			} else if (Platform.isMac()) {
+				profileDir = String.format(
+					"%s/%s/%s",
+					System.getProperty("user.home"),
+					"/Library/Application Support",
+					BUILD_BASE
+				);
+			} else {
+				String xdgConfigHome = System.getenv("XDG_CONFIG_HOME");
+
+				if (xdgConfigHome == null) {
+					profileDir = String.format("%s/.config/%s", System.getProperty("user.home"), BUILD_BASE);
+				} else {
+					profileDir = String.format("%s/%s", xdgConfigHome, BUILD_BASE);
+				}
+			}
+
+			File f = new File(profileDir+File.separator+BUILD_BASE+".conf");
+			if(!f.exists()) {
+				f=new File(pmsConfFile.getAbsolutePath()+".new");
+				if(!f.exists()) // this file wasn't there either give up....
+					f=null;
+			}
+			if(f!=null) { 
+				// if we found an alternative base conf we copy it and load it
+				// and finally merge it.
+				FileUtils.copyFile(f, pmsConfFile);
+				configuration.load(PROFILE_PATH);
+				mergeConf(pmsConfFile.getAbsolutePath());
+			}	
+		}
 		tempFolder = new TempFolder(getString(KEY_TEMP_FOLDER_PATH, null));
 		programPaths = createProgramPathsChain(configuration);
 		Locale.setDefault(new Locale(getLanguage()));

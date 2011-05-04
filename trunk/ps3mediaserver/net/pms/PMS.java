@@ -127,7 +127,7 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "(SharkHunter Build) 1.21.2 - SHB2a"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.21.2 - SHB4"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
@@ -1436,5 +1436,9 @@ public class PMS {
 	public static PmsConfiguration getConfiguration() {
 		assert configuration != null;
 		return configuration;
+	}
+	
+	public ArrayList<RendererConfiguration> getRenders() {
+		return foundRenderers;
 	}
 }

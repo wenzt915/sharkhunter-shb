@@ -423,6 +423,10 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 	 * @see #closeChildren(int, boolean)
 	 */
 	public synchronized ArrayList<DLNAResource> getDLNAResources(String objectId, boolean children, int start, int count, RendererConfiguration renderer) throws IOException {
+		return getDLNAResources(objectId,children,start,count,renderer,null); 
+	}
+	public synchronized ArrayList<DLNAResource> getDLNAResources(String objectId, boolean children, int start, int count, RendererConfiguration renderer,
+																 String searchStr) throws IOException {
 		PMS.debug("Searching for objectId: " + objectId + " with children option: " +children);
 		ArrayList<DLNAResource> resources = new ArrayList<DLNAResource>();
 		DLNAResource resource = search(objectId);
@@ -433,7 +437,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 				if (!children) {
 					resources.add(resource);
 					if (resource.discovered) {
-						if (resource.refreshChildren()) {
+						if (resource.refreshChildren(searchStr)) {
 							resource.closeChildren(resource.childrenNumber, true);
 							resource.updateId++;
 							/*TranscodeVirtualFolder vf = null;
@@ -452,9 +456,16 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 					}
 				}
 				else {
+					if(resource.discovered) {
+						if(searchStr!=null) {
+							resource.discovered=false;
+							resource.childrenNumber=0;
+							resource.children.clear();
+						}
+					}
 					// Discovering if not already done.
 					if (!resource.discovered) {
-						resource.discoverChildren();
+						resource.discoverChildren(searchStr);
 						boolean ready = true;
 						if (renderer.isMediaParserV2())
 							ready = resource.analyzeChildren(count);
@@ -544,6 +555,18 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 	 */
 	public boolean analyzeChildren(int count) {
 		return true;
+	}
+	
+	public void discoverChildren(String str) {
+		discoverChildren();
+	}
+
+	public boolean isSearched() {
+		return false;
+	}
+
+	public boolean refreshChildren(String str) {
+		return refreshChildren();
 	}
 	
 	/**
@@ -1232,11 +1255,15 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		
 	
 	}
-	
+
 	public Player getPlayer() {
 		return player;
 	}
 	
+	public void setPlayer(Player p) {
+		player=p;
+	}
+
 	public String mimeType() {
 		if (player != null)
 			return player.mimeType();

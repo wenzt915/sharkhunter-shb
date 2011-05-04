@@ -40,8 +40,8 @@ Section "Program Files"
   File /r /x ".svn" "documentation"
   File /r /x ".svn" "renderers"
   File /r /x ".svn" "win32"
-  File /r "plugins"
-  File /r "extras"
+  File /r /x ".svn" "plugins"
+  File /r /x ".svn" "extras"
   File "PMS.exe"
   File "PMS.bat"
   File "pms.jar"
@@ -72,13 +72,14 @@ Section "Program Files"
 
   WriteUnInstaller "uninst.exe"
 
-  SetOutPath "$APPDATA\PMS"
+  SetOutPath "$APPDATA\PMS-SHB"
   SetOverwrite off
   File "WEB.conf"
   File "PMS.conf.new"
   ; Append all PATHs to PMS.conf.new
   ;${WordReplace} "$INSTDIR\extras" "\" "\\" "+" $R0
   ${WordReplace} "extras" "\" "\\" "+" $R0
+  ${WordReplace} "$OUTDIR" "\" "\\" "+" $R3
   ; Channels
   ${ConfigWrite} "PMS.conf.new" "channels.path=" "$R0\\channels" $R2
   ; PMS encoder
@@ -96,10 +97,15 @@ Section "Program Files"
   ; Curl and cookie
   ${ConfigWrite} "PMS.conf.new" "curl.path = " "$R0\\bin\\curl.exe" $R2
   ${ConfigWrite} "PMS.conf.new" "cookie.path = " "$R0\\cookies" $R2
+  ; Cred path
+  ${ConfigWrite} "PMS.conf.new" "cred.path = " "$R3\\PMS.cred" $R2
   ; Verify if PMS.conf exists, if not move .new to PMS.conf
   ${GetFileAttributes} "PMS.conf" "ALL" $R2
   IfErrors 0 +2
   	Rename "PMS.conf.new" "PMS.conf"
+  ${GetFileAttributes} "PMS.cred" "ALL" $R2
+  IfErrors 0 +2
+  	 ${ConfigWrite} "PMS.cred" "# Add credentials to this file" "" $R2
 SectionEnd
 
 Function Merge
