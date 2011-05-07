@@ -76,6 +76,7 @@ Section "Program Files"
   SetOverwrite off
   File "WEB.conf"
   File "PMS.conf.new"
+  File "PMS.cred.new"
   ; Append all PATHs to PMS.conf.new
   ;${WordReplace} "$INSTDIR\extras" "\" "\\" "+" $R0
   ${WordReplace} "extras" "\" "\\" "+" $R0
@@ -105,13 +106,10 @@ Section "Program Files"
   	Rename "PMS.conf.new" "PMS.conf"
   ${GetFileAttributes} "PMS.cred" "ALL" $R2
   IfErrors 0 +2
-  	 ${ConfigWrite} "PMS.cred" "# Add credentials to this file" "" $R2
+  	 Rename "PMS.cred.new" "PMS.cred"
+  Delete "PMS.cred.new"
 SectionEnd
 
-Function Merge
-	FileWrite $R3 "$9$\n"
-	Push $0
-FunctionEnd
  
 Section "Start Menu Shortcuts"
   SetShellVarContext all

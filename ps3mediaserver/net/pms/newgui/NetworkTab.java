@@ -333,6 +333,8 @@ public class NetworkTab {
 
 		int i = 0;
 		for (final ExternalListener listener : ExternalFactory.getExternalListeners()) {
+			if(listener.config()==null)
+				continue;
 			plugins[i].setText(listener.name());
 			plugins[i].setVisible(true);
 
@@ -346,7 +348,7 @@ public class NetworkTab {
 				}
 			});
 
-			i++;
+			//i++;
 		}
 
 	}
