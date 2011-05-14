@@ -13,8 +13,8 @@ VIAddVersionKey "CompanyName" "A. Brochard"
 VIAddVersionKey "LegalTrademarks" ""
 VIAddVersionKey "LegalCopyright" ""
 VIAddVersionKey "FileDescription" "PS3 Media Server"
-VIAddVersionKey "FileVersion" "1.21.2"
-VIProductVersion "1.21.2.0"
+VIAddVersionKey "FileVersion" "1.22.0"
+VIProductVersion "1.22.0.0"
  
 !define JARPATH "pms.jar"
 !define CLASS "net.pms.PMS"
@@ -47,8 +47,14 @@ Section ""
   Pop $R0
   
   ReadRegStr $R3 HKCU "${REG_KEY_SOFTWARE}" "HeapMem"
+  
+  ${If} $R3 == ""  ; no value found
+  	StrCpy $R3 "768"
+  ${EndIf}
+  
   StrCpy $R4 "M"
   StrCpy $R3 "-Xmx$R3$R4"
+  
   
   ; change for your purpose (-jar etc.)
   ${GetParameters} $1

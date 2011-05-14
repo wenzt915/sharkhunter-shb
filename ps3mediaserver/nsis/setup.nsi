@@ -48,7 +48,7 @@ Function SetMem
 		Abort
 	${EndIf}
 	
-	${NSD_CreateLabel} 0 0 50% 12u "Enter amount of memory to use"
+	${NSD_CreateLabel} 0 0 50% 12u "Enter amount of memory to give to PMS"
 	Pop $Label
 
 	${NSD_CreateText} 50% 0 50% 12u "768"
@@ -90,7 +90,7 @@ Section "Program Files"
 
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayName" "PS3 Media Server"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayIcon" "$INSTDIR\icon.ico"
-  WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayVersion" "1.21.2"
+  WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayVersion" "1.22.0"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "Publisher" "PS3 Media Server"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "URLInfoAbout" "http://www.ps3mediaserver.org"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "UninstallString" '"$INSTDIR\uninst.exe"'

@@ -388,12 +388,12 @@ public class PmsConfiguration {
 		return programPaths.getMencoderMTPath();
 	}
 
-	public String getMencoderOlderPath() {
-		return programPaths.getMencoderOlderPath();
+	public String getMencoderAlternatePath() {
+		return programPaths.getMencoderAlternatePath();
 	}
 
-	public String getMencoderOlderMTPath() {
-		return programPaths.getMencoderOlderMTPath();
+	public String getMencoderAlternateMTPath() {
+		return programPaths.getMencoderAlternateMTPath();
 	}
 	
 	public String getDCRawPath() {
@@ -1324,7 +1324,7 @@ public class PmsConfiguration {
 				hostname = HOSTNAME = InetAddress.getLocalHost().getHostName();
 			} catch (UnknownHostException e) {
 				PMS.minimal("Can't determine hostname");
-				hostname = "unknown host";
+				hostname = HOSTNAME = "unknown host";
 			}
 		} else {
 			hostname = HOSTNAME;

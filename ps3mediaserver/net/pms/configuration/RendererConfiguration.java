@@ -145,7 +145,7 @@ public class RendererConfiguration {
 			}
 		}
 		if (c > 0)
-			time = (int) (time / c);
+			time = (time / c);
 		if (time > 0) {
 			speedInMbits = (int) (1024 / time);
 			PMS.minimal("Renderer " + this + " has an estimated network speed of: " + speedInMbits + " Mb/s");
