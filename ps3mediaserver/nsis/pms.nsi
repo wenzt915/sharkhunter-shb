@@ -19,6 +19,7 @@ VIProductVersion "1.21.2.0"
 !define JARPATH "pms.jar"
 !define CLASS "net.pms.PMS"
 !define PRODUCT_NAME "PMS"
+!define REG_KEY_SOFTWARE "SOFTWARE\PS3 Media Server"
  
 ; Definitions for Java 6.0
 !define JRE_VERSION "6.0"
@@ -40,14 +41,18 @@ ShowInstDetails nevershow
 !include "WordFunc.nsh"
 !insertmacro VersionCompare
 !include "x64.nsh"
- 
+
 Section ""
   Call GetJRE
   Pop $R0
- 
+  
+  ReadRegStr $R3 HKCU "${REG_KEY_SOFTWARE}" "HeapMem"
+  StrCpy $R4 "M"
+  StrCpy $R3 "-Xmx$R3$R4"
+  
   ; change for your purpose (-jar etc.)
   ${GetParameters} $1
-  StrCpy $0 '"$R0" -classpath update.jar;pms.jar -Xmx1536M -Djava.net.preferIPv4Stack=true -Dfile.encoding=UTF-8 ${CLASS} $1'
+  StrCpy $0 '"$R0" -classpath update.jar;pms.jar $R3 -Djava.net.preferIPv4Stack=true -Dfile.encoding=UTF-8 ${CLASS} $1'
  
   SetOutPath $EXEDIR
   Exec $0

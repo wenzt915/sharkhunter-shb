@@ -3,6 +3,8 @@
 !include "FileFunc.nsh"
 !include "TextFunc.nsh"
 !include "WordFunc.nsh"
+!include "LogicLib.nsh"
+!include "nsDialogs.nsh"
 
 !define REG_KEY_UNINSTALL "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PS3 Media Server"
 !define REG_KEY_SOFTWARE "SOFTWARE\PS3 Media Server"
@@ -11,7 +13,7 @@ RequestExecutionLevel admin
 
 Name "PS3MediaServer"
 OutFile "dist\pms-setup-windows-${VERSION}.exe"
-InstallDir "$PROGRAMFILES\PS3MediaServer"
+InstallDir "$PROGRAMFILES\PS3MediaServer" 
 
 ;Get install folder from registry for updates
 InstallDirRegKey HKCU "${REG_KEY_SOFTWARE}" ""
@@ -25,6 +27,7 @@ SetCompressorDictSize 32
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
+Page custom SetMem SetMemLeave ;Custom page
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -32,6 +35,32 @@ SetCompressorDictSize 32
 !insertmacro MUI_LANGUAGE "English"
 
 ShowUninstDetails show
+
+Var Dialog
+Var Text
+Var Label
+
+Function SetMem
+	nsDialogs::Create 1018
+	Pop $Dialog
+
+	${If} $Dialog == error
+		Abort
+	${EndIf}
+	
+	${NSD_CreateLabel} 0 0 50% 12u "Enter amount of memory to use"
+	Pop $Label
+
+	${NSD_CreateText} 50% 0 50% 12u "768"
+	Pop $Text
+	
+	nsDialogs::Show
+FunctionEnd
+
+Function SetMemLeave
+	${NSD_GetText} $Text $0
+	WriteRegStr HKCU "${REG_KEY_SOFTWARE}" "HeapMem" "$0"
+FunctionEnd
 
 Section "Program Files"
   SetOutPath "$INSTDIR"

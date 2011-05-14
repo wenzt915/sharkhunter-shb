@@ -127,7 +127,7 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "(SharkHunter Build) 1.21.2 - SHB4"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.21.2 - SHB5"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
@@ -369,8 +369,6 @@ public class PMS {
 
 		proxy = -1;
 
-
-
 		minimal("Starting PS3 Media Server " + VERSION); //$NON-NLS-1$
 		minimal("by shagrath / 2008-2011"); //$NON-NLS-1$
 		minimal("http://ps3mediaserver.org"); //$NON-NLS-1$
@@ -391,6 +389,8 @@ public class PMS {
 		minimal("Profile directory: " + configuration.getProfileDir());
 		String profilePath = configuration.getProfilePath();
 		minimal("Profile path: " + profilePath);
+		
+		debug("Memory: "+Runtime.getRuntime().maxMemory());
 
 		File profileFile =  new File(profilePath);
 
