@@ -61,8 +61,8 @@ public class TSMuxerVideo extends Player {
 	@Override
 	public boolean excludeFormat(Format extension) {
 		String m = extension.getMatchedId();
-		return m != null && !m.equals("mp4") && !m.equals("mkv") && !m.equals("ts") && !m.equals("tp") && !m.equals("m2ts") && !m.equals("m2t") && !m.equals("mpg") && !m.equals("evo") && !m.equals("mpeg") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$
-			&& !m.equals("vob") && !m.equals("m2v") && !m.equals("mts"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		return m != null && !m.equals("mp4") && !m.equals("mkv") && !m.equals("ts") && !m.equals("tp") && !m.equals("m2ts") && !m.equals("m2t") && !m.equals("mpg") && !m.equals("evo") && !m.equals("mpeg") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$ //$NON-NLS-8$ //$NON-NLS-9$
+			&& !m.equals("vob") && !m.equals("m2v") && !m.equals("mts") && !m.equals("mov"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 	}
 	
 	@Override
@@ -160,7 +160,7 @@ public class TSMuxerVideo extends Player {
 			// Figure out which version of MEncoder we want to use
 			if (
 				(media.muxingMode != null && media.muxingMode.equals("Header stripping")) ||
-				(media.getFirstAudioTrack().muxingModeAudio != null && media.getFirstAudioTrack().muxingModeAudio.equals("Header stripping"))
+				(media.getFirstAudioTrack() != null && media.getFirstAudioTrack().muxingModeAudio != null && media.getFirstAudioTrack().muxingModeAudio.equals("Header stripping"))
 			) {
 			// Use the newer version of MEncoder
 				if (isMultiCore && configuration.getMencoderMT()) {

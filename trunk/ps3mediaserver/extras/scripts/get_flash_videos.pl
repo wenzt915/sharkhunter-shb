@@ -7103,10 +7103,10 @@ sub download {
     }
   }
   
- # if($opt{url}) {
-#	print "$actual_url\n";
-#	return 1;
- # }
+  if($opt{url}) {
+	print "$actual_url\n";
+	return 1;
+  }
 
   my $suggested_filename = $suggested_fnames[-1];
 

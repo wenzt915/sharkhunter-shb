@@ -127,7 +127,8 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "(SharkHunter Build) 1.22.0 - SHB5"; //$NON-NLS-1$
+
+	public static final String VERSION = "(SharkHunter Build) 1.23.0 - SHB6"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
@@ -494,7 +495,7 @@ public class PMS {
 					if (foundRenderers.size() == 0) {
 						frame.setStatusCode(0, Messages.getString("PMS.0"), "messagebox_critical-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 					} else {
-						frame.setStatusCode(0, "A media renderer other than the PS3 has been detected. This software is tuned for the PS3 but may work with your renderer", "messagebox_warning-220.png");
+						frame.setStatusCode(0, Messages.getString("PMS.15"), "messagebox_warning-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 					}
 				}
 			}
