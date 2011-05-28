@@ -1,6 +1,29 @@
 Changelog:
 ==========
 
+26/05/2011 - 1.23.0
+
+	Fixed Windows service
+	Windows service now starts automatically with the computer
+	Sony Bravia Z5500 (and possibly others) work again
+	Fixed PS3 not being detected for some users
+	Support cellphone/smartphone (3gp) videos
+	Windows service is uninstalled with program
+	Detect Popcorn Hour and WDTV live more reliably
+	English, Russian and Dutch language updates
+
+15/05/2011 - 1.22.0
+
+	Many file compatibility bugs fixed (particularly MKV, MP4 and DVD ISO)
+	Help tab improved
+	Improved alphabetical file sorting (old method is still there for those who liked it)
+	Language fixes and updates
+	Added custom profiles
+	Added new renderers: Sony HX7, Bravia NX8, Panasonic Viera range
+	Network traffic prioritised properly (thanks to bgm)
+	48fps videos are now supported
+	Various other fixes
+
 15/04/2011 - 1.21.1
 
 	Rollback MPlayer for Windows to fix critical subtitle bug

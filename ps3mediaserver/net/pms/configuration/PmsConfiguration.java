@@ -247,9 +247,12 @@ public class PmsConfiguration {
 			String profileDir = null;
 
 			if (Platform.isWindows()) {
-				String appData = System.getenv("APPDATA");
-				if (appData != null)
-					profileDir = String.format("%s\\%s", appData, BUILD);
+				String programData = System.getenv("ALLUSERSPROFILE");
+				if (programData != null) {
+					profileDir = String.format("%s\\%s", programData, BUILD);
+				} else {
+					profileDir = ""; // i.e. current (working) directory
+				}
 			} else if (Platform.isMac()) {
 				profileDir = String.format(
 					"%s/%s/%s",
@@ -285,13 +288,19 @@ public class PmsConfiguration {
 		configuration.setFileName(PROFILE_PATH);
 
 		File pmsConfFile = new File(PROFILE_PATH);
+		File mFile=new File(PROFILE_PATH+".new");
 		if (pmsConfFile.exists() && pmsConfFile.isFile()) {
 			configuration.load(PROFILE_PATH);
-			mergeConf(pmsConfFile.getAbsolutePath());
+			mergeConf(PROFILE_DIRECTORY);
 		}
-		else {
+		else if(mFile.exists()) {
+			/*FileUtils.copyFile(mFile, pmsConfFile);
+			configuration.load(PROFILE_PATH);*/
+			mergeConf(PROFILE_DIRECTORY);
+		}
+		else {	
 			String profileDir = null;
-
+			
 			if (Platform.isWindows()) {
 				String appData = System.getenv("APPDATA");
 				if (appData != null)
@@ -312,33 +321,77 @@ public class PmsConfiguration {
 					profileDir = String.format("%s/%s", xdgConfigHome, BUILD_BASE);
 				}
 			}
-
-			File f = new File(profileDir+File.separator+BUILD_BASE+".conf");
-			if(!f.exists()) {
-				f=new File(pmsConfFile.getAbsolutePath()+".new");
-				if(!f.exists()) // this file wasn't there either give up....
-					f=null;
-			}
-			if(f!=null) { 
-				// if we found an alternative base conf we copy it and load it
-				// and finally merge it.
-				FileUtils.copyFile(f, pmsConfFile);
-				configuration.load(PROFILE_PATH);
-				mergeConf(pmsConfFile.getAbsolutePath());
-			}	
 		}
 		tempFolder = new TempFolder(getString(KEY_TEMP_FOLDER_PATH, null));
 		programPaths = createProgramPathsChain(configuration);
 		Locale.setDefault(new Locale(getLanguage()));
 	}
 	
-	private void mergeConf(String path) {
-		File mFile=new File(path+".new");
+	private void mergeConf(String path) throws IOException, ConfigurationException {
+		File mFile=new File(path+File.separator+DEFAULT_PROFILE_FILENAME+".new");
+		File cDummy=new File(path+File.separator+"PMS.cred.new");
 		if(!mFile.exists()) // no file to merge give up early
 			return;
+		String dir="",dir1="";
+		if (Platform.isWindows()) {
+			String appData = System.getenv("APPDATA");
+			if (appData != null) {
+				dir = String.format("%s\\%s", appData, BUILD_BASE);
+				dir1=String.format("%s\\%s", appData, BUILD);
+			}
+			File[] f=new File[3];
+			File cf=null;
+			File wf=null;
+			int i=0;
+			if(!StringUtils.isEmpty(dir1)) { // 1st check if we got a %APPDTA/PMS-SHB file
+				File f1 = new File(dir1+File.separator+DEFAULT_PROFILE_FILENAME);
+				File c1 =new File(dir1+File.separator+"PMS.cred");
+				File w=new File(dir1+File.separator+"WEB.conf");
+				if(f1.exists()) 
+					f[i++]=f1;
+				if(c1.exists())
+					cf=c1;
+				if(w.exists())
+					wf=w;
+			}
+			if(!StringUtils.isEmpty(dir)) { // 1st check if we got a %APPDTA/PMS-SHB file
+				File f1 = new File(dir+File.separator+DEFAULT_PROFILE_FILENAME);
+				File c1 =new File(dir+File.separator+"PMS.cred");
+				File w=new File(dir+File.separator+"WEB.conf");
+				if(f1.exists()) 
+					f[i++]=f1;
+				if(c1.exists()&&cf==null) // only if we have no PMS-SHB/PMS.cred
+					cf=c1;	
+				if(w.exists()&&wf==null)
+					wf=w;
+			}
+			if(wf!=null) // copy old web.conf
+				FileUtils.copyFile(wf, new File(path+File.separator+"WEB.conf"));
+			f[i++]=mFile; // do this last so we don't hide old stuff
+			for(int j=0;j<f.length;j++)
+				doMerge(f[j].getAbsolutePath());
+			// Merge cred files
+			File cFile=new File(path+File.separator+"PMS.cred");
+			if(!cFile.exists()) { // nope, the cred file needs some merging
+				if(cf==null) { // no old one, see if we got a dummy one
+					if(cDummy.exists())  // yeah a dummy needs to copied
+						cf=cDummy; 
+				}
+				if(cf!=null)   { // we got some file copy it
+					FileUtils.copyFile(cf, cFile);
+					configuration.setProperty("cred.path", cFile.getAbsolutePath());
+				}
+			}
+		}
+		cDummy.delete();
+		mFile.delete();
+		configuration.save();
+	}
+	
+	private void doMerge(String file) {
 		PropertiesConfiguration tmp=new PropertiesConfiguration();
 		try {
-			tmp.load(mFile.getAbsolutePath());
+			tmp.load(file);
 			Iterator i=tmp.getKeys();
 			while(i.hasNext()) {
 				String key=(String) i.next();
@@ -346,8 +399,7 @@ public class PmsConfiguration {
 					continue;
 				configuration.setProperty(key, tmp.getProperty(key));
 			}
-			mFile.delete();
-			configuration.save();
+			//configuration.save();
 		} catch (ConfigurationException e) {
 		}
 	}
@@ -1317,19 +1369,15 @@ public class PmsConfiguration {
 	}
 
 	public String getProfileName() {
-		String hostname;
-
-		if (HOSTNAME == null) {
+		if (HOSTNAME == null) { // calculate this lazily
 			try {
-				hostname = HOSTNAME = InetAddress.getLocalHost().getHostName();
+				HOSTNAME = InetAddress.getLocalHost().getHostName();
 			} catch (UnknownHostException e) {
 				PMS.minimal("Can't determine hostname");
-				hostname = HOSTNAME = "unknown host";
+				HOSTNAME = "unknown host";
 			}
-		} else {
-			hostname = HOSTNAME;
 		}
 
-		return getString(KEY_PROFILE_NAME, hostname);
+		return getString(KEY_PROFILE_NAME, HOSTNAME);
 	}
 }

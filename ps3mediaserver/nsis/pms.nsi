@@ -7,19 +7,19 @@ Caption "PS3 Media Server"
 Icon "icon.ico"
 OutFile "PMS.exe"
  
-VIAddVersionKey "ProductName" "PS3 Media Server"
+VIAddVersionKey "ProductName" "PS3 Media Server-SHB"
 VIAddVersionKey "Comments" ""
 VIAddVersionKey "CompanyName" "A. Brochard"
 VIAddVersionKey "LegalTrademarks" ""
 VIAddVersionKey "LegalCopyright" ""
 VIAddVersionKey "FileDescription" "PS3 Media Server"
-VIAddVersionKey "FileVersion" "1.22.0"
-VIProductVersion "1.22.0.0"
+VIAddVersionKey "FileVersion" "1.23.0"
+VIProductVersion "1.23.0.0"
  
 !define JARPATH "pms.jar"
 !define CLASS "net.pms.PMS"
 !define PRODUCT_NAME "PMS"
-!define REG_KEY_SOFTWARE "SOFTWARE\PS3 Media Server"
+!define REG_KEY_SOFTWARE "SOFTWARE\PS3 Media Server-SHB"
  
 ; Definitions for Java 6.0
 !define JRE_VERSION "6.0"
