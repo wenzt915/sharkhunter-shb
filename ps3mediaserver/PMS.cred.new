@@ -2,4 +2,4 @@
 # Format should be
 # plugin.tag=username,password
 # Example:
-# channels.IceFilms=myName,myPwd
+# channel.IceFilms=myName,myPwd
