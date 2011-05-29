@@ -3,6 +3,7 @@ package net.pms.configuration;
 import java.awt.Color;
 import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -368,8 +369,9 @@ public class PmsConfiguration {
 			if(wf!=null) // copy old web.conf
 				FileUtils.copyFile(wf, new File(path+File.separator+"WEB.conf"));
 			f[i++]=mFile; // do this last so we don't hide old stuff
-			for(int j=0;j<f.length;j++)
+			for(int j=0;j<i;j++) {
 				doMerge(f[j].getAbsolutePath());
+			}		
 			// Merge cred files
 			File cFile=new File(path+File.separator+"PMS.cred");
 			if(!cFile.exists()) { // nope, the cred file needs some merging
@@ -388,10 +390,9 @@ public class PmsConfiguration {
 		configuration.save();
 	}
 	
-	private void doMerge(String file) {
+	private void doMerge(String file)  {
 		PropertiesConfiguration tmp=new PropertiesConfiguration();
 		try {
-			tmp.load(file);
 			Iterator i=tmp.getKeys();
 			while(i.hasNext()) {
 				String key=(String) i.next();
@@ -399,8 +400,7 @@ public class PmsConfiguration {
 					continue;
 				configuration.setProperty(key, tmp.getProperty(key));
 			}
-			//configuration.save();
-		} catch (ConfigurationException e) {
+		} catch (Exception e) {
 		}
 	}
 
