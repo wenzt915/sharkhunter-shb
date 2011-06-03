@@ -128,7 +128,7 @@ public class PMS {
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
 
-	public static final String VERSION = "(SharkHunter Build) 1.23.0 - SHB7"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.23.0 - SHB8"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
@@ -466,8 +466,11 @@ public class PMS {
 			error("Error loading plugins", e);
 		}
 
+		// a static block in Player doesn't work (i.e. is called too late).
+		// this must always be called *after* the plugins have loaded.
+		// here's as good a place as any
+		Player.initializeFinalizeTranscoderArgsListeners();
 		registerPlayers();
-
 		getRootFolder(RendererConfiguration.getDefaultConf());
 
 		boolean binding = false;
