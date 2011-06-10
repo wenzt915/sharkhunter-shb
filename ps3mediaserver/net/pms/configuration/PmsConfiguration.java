@@ -143,9 +143,9 @@ public class PmsConfiguration {
 	 *
 	 *     Mac OS X:
 	 *
-	 *         /home/<username>/Library/Application Support/PMS 
+	 *         /home/<username>/Library/Application Support/PMS
 	 *
-         *     Linux &c.
+	 *     Linux &c.
 	 *
 	 *         /home/<username>/.config/PMS
 	 *
@@ -393,6 +393,7 @@ public class PmsConfiguration {
 	private void doMerge(String file)  {
 		PropertiesConfiguration tmp=new PropertiesConfiguration();
 		try {
+			tmp.load(new File(file));
 			Iterator i=tmp.getKeys();
 			while(i.hasNext()) {
 				String key=(String) i.next();
