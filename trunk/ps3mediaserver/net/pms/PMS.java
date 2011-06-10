@@ -37,6 +37,7 @@ import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -128,7 +129,7 @@ public class PMS {
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
 
-	public static final String VERSION = "(SharkHunter Build) 1.23.0 - SHB8"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.23.0 - SHB9"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
@@ -1403,7 +1404,7 @@ public class PMS {
 		}
 
 		configuration = new PmsConfiguration();
-
+		
 		// Load the (optional) logback config file. This has to be called after 'new PmsConfiguration'
 		// as the logging starts immediately and some filters need the PmsConfiguration.
 		LoggingConfigFileLoader.load();
