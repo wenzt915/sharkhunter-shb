@@ -121,6 +121,11 @@ import com.sun.jna.Platform;
 
 public class PMS {
 
+	private static final String SCROLLBARS = "scrollbars"; //$NON-NLS-1$
+	private static final String NATIVELOOK = "nativelook"; //$NON-NLS-1$
+	private static final String CONSOLE = "console"; //$NON-NLS-1$
+	private static final String NOCONSOLE = "noconsole"; //$NON-NLS-1$
+
 	/**
 	 * Update URL used in the {@link AutoUpdater}.
 	 */
@@ -129,8 +134,10 @@ public class PMS {
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
 
-	public static final String VERSION = "(SharkHunter Build) 1.23.0 - SHB9"; //$NON-NLS-1$
+
+	public static final String VERSION = "(SharkHunter Build) 1.25.2 - SHB10"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
+
 	// (innot): The logger used for all logging.
 	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
 	// TODO(tcox):  This shouldn't be static
@@ -311,7 +318,7 @@ public class PMS {
 			return true;
 		} catch (Exception e) {
 			if (error) {
-				error("Cannot launch " + name + " / Check the presence of " + params[0] + " ...", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				logger.error("Cannot launch " + name + " / Check the presence of " + params[0] + " ...", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			}
 			return false;
 		}
@@ -358,7 +365,7 @@ public class PMS {
 		registry = new WinUtils();
 
 		AutoUpdater autoUpdater = null;//new AutoUpdater(UPDATE_SERVER_URL, VERSION);
-		if (System.getProperty("console") == null) {//$NON-NLS-1$
+		if (System.getProperty(CONSOLE) == null) {//$NON-NLS-1$
 			frame = new LooksFrame(autoUpdater, configuration);
 			//autoUpdater.pollServer();
 		} else {
@@ -368,7 +375,6 @@ public class PMS {
 		}
 
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
-
 		proxy = -1;
 
 		minimal("Starting PS3 Media Server " + VERSION); //$NON-NLS-1$
@@ -413,7 +419,9 @@ public class PMS {
 
 		minimal("Checking MPlayer font cache. It can take a minute or so.");
 		checkProcessExistence("MPlayer", true, null, configuration.getMplayerPath(), "dummy");
-		checkProcessExistence("MPlayer", true, getConfiguration().getTempFolder(), configuration.getMplayerPath(), "dummy");
+      		if(isWindows()) {
+			checkProcessExistence("MPlayer", true, configuration.getTempFolder(), configuration.getMplayerPath(), "dummy");
+		}
 		minimal("Done!");
 
 		// check the existence of Vsfilter.dll
@@ -464,7 +472,7 @@ public class PMS {
 		try {
 			ExternalFactory.lookup();
 		} catch (Exception e) {
-			error("Error loading plugins", e);
+			logger.error("Error loading plugins", e);
 		}
 
 		// a static block in Player doesn't work (i.e. is called too late).
@@ -472,6 +480,7 @@ public class PMS {
 		// here's as good a place as any
 		Player.initializeFinalizeTranscoderArgsListeners();
 		registerPlayers();
+
 		getRootFolder(RendererConfiguration.getDefaultConf());
 
 		boolean binding = false;
@@ -496,7 +505,7 @@ public class PMS {
 					}
 				}
 				if (!ps3found) {
-					if (foundRenderers.size() == 0) {
+					if (foundRenderers.isEmpty()) {
 						frame.setStatusCode(0, Messages.getString("PMS.0"), "messagebox_critical-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 					} else {
 						frame.setStatusCode(0, Messages.getString("PMS.15"), "messagebox_warning-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -552,7 +561,6 @@ public class PMS {
 
 		return true;
 	}
-	private static final String PMSDIR = "\\PMS\\";
 
 	/**Creates a new Root folder for a given configuration. It adds following folders in this order:
 	 * <ol><li>Directory folders as stated in the configuration pane
@@ -567,9 +575,7 @@ public class PMS {
 	 * @throws IOException
 	 */
 	public void manageRoot(RendererConfiguration renderer) throws IOException {
-		String webConfPath;
-
-		File files[] = loadFoldersConf(configuration.getFolders());
+		File files[] = loadFoldersConf(configuration.getFolders(), true);
 		if (files == null || files.length == 0) {
 			files = File.listRoots();
 		}
@@ -586,7 +592,7 @@ public class PMS {
 		rootFolder.browse(MapFileConfiguration.parse(configuration.getVirtualFolders()));
 
 		// FIXME: this (the WEB.conf path) should be fully configurable
-		File webConf = new File(PMS.getConfiguration().getProfileDir(), "WEB.conf"); //$NON-NLS-1$
+		File webConf = new File(configuration.getProfileDir(), "WEB.conf"); //$NON-NLS-1$
 
 		if (webConf.exists()) {
 			try {
@@ -648,13 +654,13 @@ public class PMS {
 		}
 
 		if (Platform.isMac()) {
-			if (getConfiguration().getIphotoEnabled()) {
+			if (configuration.getIphotoEnabled()) {
 				addiPhotoFolder(renderer);
 			}
 		}
 
 		if (Platform.isMac() || Platform.isWindows()) {
-			if (getConfiguration().getItunesEnabled()) {
+			if (configuration.getItunesEnabled()) {
 				addiTunesFolder(renderer);
 			}
 		}
@@ -716,7 +722,7 @@ public class PMS {
 					minimal("iPhoto folder not found !?");
 				}
 			} catch (Exception e) {
-				error("Something went wrong with the iPhoto Library scan: ", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				logger.error("Something went wrong with the iPhoto Library scan: ", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			}
 		}
 	}
@@ -764,7 +770,7 @@ public class PMS {
 				location = location + "\\iTunes\\iTunes Music Library.xml";
 				iTunesFile = location;
 			} else {
-				minimal("Could not find the My Music folder");
+				logger.info("Could not find the My Music folder");
 			}
 		}
 
@@ -815,10 +821,10 @@ public class PMS {
 					}
 					getRootFolder(renderer).addChild(vf);
 				} else {
-					minimal("Could not find the iTunes file");
+					logger.info("Could not find the iTunes file");
 				}
 			} catch (Exception e) {
-				error("Something went wrong with the iTunes Library scan: ", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				logger.error("Something went wrong with the iTunes Library scan: ", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			}
 		}
 	}
@@ -853,13 +859,13 @@ public class PMS {
 				}
 			});
 
-			vf.addChild(new VirtualVideoAction("  !!-- Fix 23.976/25fps A/V Mismatch --!!", getConfiguration().isFix25FPSAvMismatch()) { //$NON-NLS-1$
+			vf.addChild(new VirtualVideoAction("  !!-- Fix 23.976/25fps A/V Mismatch --!!", configuration.isFix25FPSAvMismatch()) { //$NON-NLS-1$
 
 				@Override
 				public boolean enable() {
-					getConfiguration().setMencoderForceFps(!getConfiguration().isFix25FPSAvMismatch());
-					getConfiguration().setFix25FPSAvMismatch(!getConfiguration().isFix25FPSAvMismatch());
-					return getConfiguration().isFix25FPSAvMismatch();
+					configuration.setMencoderForceFps(!configuration.isFix25FPSAvMismatch());
+					configuration.setFix25FPSAvMismatch(!configuration.isFix25FPSAvMismatch());
+					return configuration.isFix25FPSAvMismatch();
 				}
 			});
 
@@ -1063,11 +1069,10 @@ public class PMS {
 		extensions.add(new RAW());
 	}
 
-	/**Register a known set of audio/video transform tools (known as {@link Player}s). Used in PMS#init().
+	/**Register a known set of audio/video transcoders (known as {@link Player}s). Used in PMS#init().
 	 * @see PMS#init()
 	 */
 	private void registerPlayers() {
-		assert configuration != null;
 		if (Platform.isWindows()) {
 			registerPlayer(new FFMpegVideo());
 		}
@@ -1104,7 +1109,7 @@ public class PMS {
 		} else {
 			if (isWindows()) {
 				if (p.executable() == null) {
-					minimal("Executable of transcoder profile " + p + " not found"); //$NON-NLS-1$ //$NON-NLS-2$
+					logger.info("Executable of transcoder profile " + p + " not found"); //$NON-NLS-1$ //$NON-NLS-2$
 					return;
 				}
 				File executable = new File(p.executable());
@@ -1113,7 +1118,7 @@ public class PMS {
 				if (executable.exists() || executable2.exists()) {
 					ok = true;
 				} else {
-					minimal("Executable of transcoder profile " + p + " not found"); //$NON-NLS-1$ //$NON-NLS-2$
+					logger.info("Executable of transcoder profile " + p + " not found"); //$NON-NLS-1$ //$NON-NLS-2$
 					return;
 				}
 				if (p.avisynth()) {
@@ -1121,7 +1126,7 @@ public class PMS {
 					if (registry.isAvis()) {
 						ok = true;
 					} else {
-						minimal("Transcoder profile " + p + " will not be used because AviSynth was not found"); //$NON-NLS-1$ //$NON-NLS-2$
+						logger.info("Transcoder profile " + p + " will not be used because AviSynth was not found"); //$NON-NLS-1$ //$NON-NLS-2$
 					}
 				}
 			} else if (!p.avisynth()) {
@@ -1129,21 +1134,19 @@ public class PMS {
 			}
 		}
 		if (ok) {
-			minimal("Registering transcoding engine: " + p /*+ (p.avisynth()?(" with " + (forceMPlayer?"MPlayer":"AviSynth")):"")*/); //$NON-NLS-1$
+			logger.info("Registering transcoding engine: " + p /*+ (p.avisynth()?(" with " + (forceMPlayer?"MPlayer":"AviSynth")):"")*/); //$NON-NLS-1$
 			players.add(p);
 		}
 	}
 
 	/**Transforms a comma separated list of directory entries into an array of {@link String}.
-	 * The function checks that the directory exists and is a valid directory.
+	 * Checks that the directory exists and is a valid directory.
 	 * @param folders {@link String} Comma separated list of directories.
+	 * @param log whether to output log information
 	 * @return {@link File}[] Array of directories.
 	 * @throws IOException
 	 * @see {@link PMS#manageRoot(RendererConfiguration)}
 	 */
-	public File[] loadFoldersConf(String folders) throws IOException {
-		return loadFoldersConf(folders, true);
-	}
 
 	// this is called *way* too often (e.g. a dozen times with 1 renderer and 1 shared folder),
 	// so log it by default so we can fix it.
@@ -1165,14 +1168,15 @@ public class PMS {
 			}
 			File file = new File(folder);
 			if (file.exists()) {
-				if (file.isDirectory()) {
-					directories.add(file);
-				} else {
-					error("File " + folder + " is not a directory!", null); //$NON-NLS-1$ //$NON-NLS-2$
+				if (!file.isDirectory()) {
+					logger.warn("The file " + folder + " is not a directory! Please remove it from your Shared folders list on the Navigation/Share Settings tab"); //$NON-NLS-1$ //$NON-NLS-2$
 				}
 			} else {
-				error("The directory " + folder + " does not exist. Please remove it from your Shared folders list on the Navigation/Share Settings tab", null); //$NON-NLS-1$ //$NON-NLS-2$
+				logger.warn("The directory " + folder + " does not exist. Please remove it from your Shared folders list on the Navigation/Share Settings tab"); //$NON-NLS-1$ //$NON-NLS-2$
 			}
+
+			// add the file even if there are problems so that the user can update the shared folders as required.
+			directories.add(file);
 		}
 		File f[] = new File[directories.size()];
 		directories.toArray(f);
@@ -1214,18 +1218,14 @@ public class PMS {
 	 * @param msg {@link String} to be added to the debug stream.
 	 */
 	public static void debug(String msg) {
-		if (logger != null) {
-			logger.trace(msg);
-		}
+		logger.trace(msg);
 	}
 
 	/**Adds a message to the info stream.
 	 * @param msg {@link String} to be added to the info stream.
 	 */
 	public static void info(String msg) {
-		if (logger != null) {
-			logger.debug(msg);
-		}
+		logger.debug(msg);
 	}
 
 	/**Adds a message to the minimal stream. This stream is also
@@ -1233,9 +1233,7 @@ public class PMS {
 	 * @param msg {@link String} to be added to the minimal stream.
 	 */
 	public static void minimal(String msg) {
-		if (logger != null) {
-			logger.info(msg);
-		}
+		logger.info(msg);
 	}
 
 	/**Adds a message to the error stream. This is usually called by
@@ -1244,10 +1242,9 @@ public class PMS {
 	 * @param t {@link Throwable} comes from an {@link Exception} 
 	 */
 	public static void error(String msg, Throwable t) {
-		if (logger != null) {
-			logger.error(msg, t);
-		}
+		logger.error(msg, t);
 	}
+
 	/**Universally Unique Identifier used in the UPnP server.
 	 * 
 	 */
@@ -1262,9 +1259,9 @@ public class PMS {
 			boolean uuidBasedOnMAC = false;
 			NetworkInterface ni = null;
 			try {
-				if (getConfiguration().getServerHostname() != null && getConfiguration().getServerHostname().length() > 0) {
+				if (configuration.getServerHostname() != null && configuration.getServerHostname().length() > 0) {
 					try {
-						ni = NetworkInterface.getByInetAddress(InetAddress.getByName(getConfiguration().getServerHostname()));
+						ni = NetworkInterface.getByInetAddress(InetAddress.getByName(configuration.getServerHostname()));
 					} catch (Exception e) {
 					}
 				} else if (get().getServer().getNi() != null) {
@@ -1277,11 +1274,11 @@ public class PMS {
 						uuid = UUID.nameUUIDFromBytes(addr).toString();
 						uuidBasedOnMAC = true;
 					} else {
-						minimal("Unable to retrieve MAC address for UUID creation: using a random one..."); //$NON-NLS-1$
+						logger.info("Unable to retrieve MAC address for UUID creation: using a random one..."); //$NON-NLS-1$
 					}
 				}
 			} catch (Throwable e) {
-				minimal("Switching to random UUID cause there's an error in getting UUID from MAC address: " + e.getMessage()); //$NON-NLS-1$
+				logger.info("Switching to random UUID cause there's an error in getting UUID from MAC address: " + e.getMessage()); //$NON-NLS-1$
 			}
 
 			if (!uuidBasedOnMAC) {
@@ -1291,7 +1288,7 @@ public class PMS {
 					uuid = UUID.randomUUID().toString();
 				}
 			}
-			minimal("Using the following UUID: " + uuid); //$NON-NLS-1$
+			logger.info("Using the following UUID: " + uuid); //$NON-NLS-1$
 		}
 		return "uuid:" + uuid; //$NON-NLS-1$ //$NON-NLS-2$
 		//return "uuid:1234567890TOTO::";
@@ -1324,9 +1321,9 @@ public class PMS {
 					instance = new PMS();
 					try {
 						if (instance.init()) {
-							minimal("The server should now appear on your renderer"); //$NON-NLS-1$
+							logger.info("The server should now appear on your renderer"); //$NON-NLS-1$
 						} else {
-							minimal("A serious error occurred"); //$NON-NLS-1$
+							logger.error("A serious error occurred during PMS init"); //$NON-NLS-1$
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -1374,37 +1371,38 @@ public class PMS {
 	public static void main(String args[]) throws IOException, ConfigurationException {
 		if (args.length > 0) {
 			for (int a = 0; a < args.length; a++) {
-				if (args[a].equals("console")) //$NON-NLS-1$
-				{
-					System.setProperty("console", "true"); //$NON-NLS-1$ //$NON-NLS-2$
-				} else if (args[a].equals("nativelook")) //$NON-NLS-1$
-				{
-					System.setProperty("nativelook", "true"); //$NON-NLS-1$ //$NON-NLS-2$
-				} else if (args[a].equals("scrollbars")) //$NON-NLS-1$
-				{
-					System.setProperty("scrollbars", "true"); //$NON-NLS-1$ //$NON-NLS-2$
-				} else if (args[a].equals("noconsole")) //$NON-NLS-1$
-				{
-					System.setProperty("noconsole", "true"); //$NON-NLS-1$ //$NON-NLS-2$
+				if (args[a].equals(CONSOLE)) {
+					System.setProperty(CONSOLE, Boolean.toString(true));
+				} else if (args[a].equals(NATIVELOOK)) {
+					System.setProperty(NATIVELOOK, Boolean.toString(true));
+				} else if (args[a].equals(SCROLLBARS)) {
+					System.setProperty(SCROLLBARS, Boolean.toString(true));
+				} else if (args[a].equals(NOCONSOLE)) {
+					System.setProperty(NOCONSOLE, Boolean.toString(true));
 				}
 			}
 		}
+
 		try {
 			Toolkit.getDefaultToolkit();
-			if (GraphicsEnvironment.isHeadless() && System.getProperty("noconsole") == null) //$NON-NLS-1$
-			{
-				System.setProperty("console", "true"); //$NON-NLS-1$ //$NON-NLS-2$
+			if (GraphicsEnvironment.isHeadless() && System.getProperty(NOCONSOLE) == null) {
+				System.setProperty(CONSOLE, Boolean.toString(true));
 			}
 		} catch (Throwable t) {
-			System.err.println("Toolkit error: " + t.getMessage()); //$NON-NLS-1$
-			if (System.getProperty("noconsole") == null) //$NON-NLS-1$
-			{
-				System.setProperty("console", "true"); //$NON-NLS-1$ //$NON-NLS-2$
+			System.err.println("Toolkit error: " + t.getMessage());
+			if (System.getProperty(NOCONSOLE) == null) {
+				System.setProperty(CONSOLE, Boolean.toString(true));
 			}
 		}
 
-		configuration = new PmsConfiguration();
+		try {
+			configuration = new PmsConfiguration();
+		} catch (Throwable t) {
+			System.err.println("Configuration error: " + t.getMessage());
+		}
 		
+		assert configuration != null;
+
 		// Load the (optional) logback config file. This has to be called after 'new PmsConfiguration'
 		// as the logging starts immediately and some filters need the PmsConfiguration.
 		LoggingConfigFileLoader.load();
@@ -1414,8 +1412,7 @@ public class PMS {
 		try {
 			// let's allow us time to show up serious errors in the GUI before quitting
 			Thread.sleep(60000);
-		} catch (InterruptedException e) {
-		}
+		} catch (InterruptedException e) {}
 	}
 
 	public HTTPServer getServer() {
@@ -1434,12 +1431,11 @@ public class PMS {
 		try {
 			configuration.save();
 		} catch (ConfigurationException e) {
-			error("Could not save configuration", e); //$NON-NLS-1$
+			logger.error("Could not save configuration", e); //$NON-NLS-1$
 		}
 	}
 
 	public static PmsConfiguration getConfiguration() {
-		assert configuration != null;
 		return configuration;
 	}
 	
