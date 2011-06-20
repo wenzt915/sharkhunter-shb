@@ -55,7 +55,6 @@ Section ""
   StrCpy $R4 "M"
   StrCpy $R3 "-Xmx$R3$R4"
   
-  
   ; change for your purpose (-jar etc.)
   ${GetParameters} $1
   StrCpy $0 '"$R0" -classpath update.jar;pms.jar $R3 -Djava.net.preferIPv4Stack=true -Dfile.encoding=UTF-8 ${CLASS} $1'
