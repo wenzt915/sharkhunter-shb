@@ -25,6 +25,9 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
@@ -135,7 +138,7 @@ public class PMS {
 	 */
 
 
-	public static final String VERSION = "(SharkHunter Build) 1.25.2 - SHB10"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.25.2 - SHB11"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -1382,7 +1385,7 @@ public class PMS {
 				}
 			}
 		}
-
+		
 		try {
 			Toolkit.getDefaultToolkit();
 			if (GraphicsEnvironment.isHeadless() && System.getProperty(NOCONSOLE) == null) {
@@ -1407,6 +1410,8 @@ public class PMS {
 		// as the logging starts immediately and some filters need the PmsConfiguration.
 		LoggingConfigFileLoader.load();
 
+		killOld();
+		
 		get();
 
 		try {
@@ -1442,4 +1447,47 @@ public class PMS {
 	public ArrayList<RendererConfiguration> getRenders() {
 		return foundRenderers;
 	}
+	
+	private static void killOld() throws IOException {
+		try {
+			killProc();
+		} catch (IOException e) {
+		}
+		dumpPid();
+	}
+	
+	private static void killProc() throws IOException {
+		ProcessBuilder pb=null;
+		BufferedReader in = new BufferedReader(new FileReader("pms.pid"));
+		String pid=in.readLine();
+		in.close();
+		if(Platform.isWindows()) {
+			pb=new ProcessBuilder("taskkill","/F","/PID",pid,"/T");
+		}
+		else if(Platform.isFreeBSD()||Platform.isLinux()||Platform.isOpenBSD()||Platform.isSolaris())
+			pb=new ProcessBuilder("kill","-9",pid);
+		if(pb==null) 
+			return;
+		try {			
+			Process p=pb.start();
+			p.waitFor();
+		} catch (Exception e) {
+			debug("error kill pid "+e);
+		}
+	}
+	
+	public static long getPID() {
+	    String processName =
+	      java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+	    return Long.parseLong(processName.split("@")[0]);
+	  }
+	
+	private static void dumpPid() throws IOException {
+		FileOutputStream out=new FileOutputStream("pms.pid");
+		String data=String.valueOf(getPID())+"\r\n";
+		out.write(data.getBytes());
+		out.flush();
+		out.close();
+	}
+	
 }

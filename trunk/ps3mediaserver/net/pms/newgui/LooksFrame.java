@@ -23,6 +23,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Observable;
@@ -375,6 +376,7 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 		 try {
 			Thread.sleep(100);
 		} catch (InterruptedException e) {}
+		new File("pms.pid").delete();
 		 System.exit(0);
 	 }
 
