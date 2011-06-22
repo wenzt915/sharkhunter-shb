@@ -136,9 +136,7 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-
-
-	public static final String VERSION = "(SharkHunter Build) 1.25.2 - SHB11"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.30.0 - SHB12"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -397,7 +395,7 @@ public class PMS {
 		minimal("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath()); //$NON-NLS-1$
 		minimal(""); //$NON-NLS-1$
 
-		minimal("Profile directory: " + configuration.getProfileDir());
+		minimal("Profile directory: " + configuration.getProfileDirectory());
 		String profilePath = configuration.getProfilePath();
 		minimal("Profile path: " + profilePath);
 		
@@ -595,7 +593,7 @@ public class PMS {
 		rootFolder.browse(MapFileConfiguration.parse(configuration.getVirtualFolders()));
 
 		// FIXME: this (the WEB.conf path) should be fully configurable
-		File webConf = new File(configuration.getProfileDir(), "WEB.conf"); //$NON-NLS-1$
+		File webConf = new File(configuration.getProfileDirectory(), "WEB.conf"); //$NON-NLS-1$
 
 		if (webConf.exists()) {
 			try {

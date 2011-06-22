@@ -81,7 +81,6 @@ init {
 				//mencoderArgs << '-scodec' << 'copy'
 				//$FFMPEG = $FFMPEG + mencoderArgs
 				$TRANSCODER = $MENCODER + mencoderArgs
-				//$DOWNLOADER = $MPLAYER + mencoderArgs
 				//$TRANSCODER = ["C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe"] + mencoderArgs
 				//$DOWNLOADER = $MENCODER + mencoderArgs
 				//$TRANSCODER = $FFMPEG + mencoderArgs
