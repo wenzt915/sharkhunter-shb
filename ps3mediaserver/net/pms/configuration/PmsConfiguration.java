@@ -599,9 +599,9 @@ public class PmsConfiguration {
 		return getString(KEY_MENCODER_ASS_SCALE, "1.0");
 	}
 
-	// http://www.ps3mediaserver.org/forum/viewtopic.php?f=7&t=10809&p=51325#p51325
+	// https://code.google.com/p/ps3mediaserver/issues/detail?id=1092#c1
 	public boolean isMencoderAc3Fixed() {
-		return configuration.getBoolean(KEY_MENCODER_AC3_FIXED, Platform.isMac());
+		return configuration.getBoolean(KEY_MENCODER_AC3_FIXED, false);
 	}
 	
 	public String getMencoderAssMargin() {
@@ -688,7 +688,7 @@ public class PmsConfiguration {
 	}
 
 	public boolean isMencoderAss() {
-		return getBoolean(KEY_MENCODER_ASS, true);
+		return getBoolean(KEY_MENCODER_ASS, Platform.isWindows());
 	}
 
 	public boolean isMencoderDisableSubs() {
@@ -1160,7 +1160,8 @@ public class PmsConfiguration {
 	}
 
 	public boolean getMencoderMT() {
-		return getBoolean(KEY_MENCODER_MT, false);
+		boolean isMultiCore = getNumberOfCpuCores() > 1;
+		return getBoolean(KEY_MENCODER_MT, isMultiCore);
 	}
 	
 	public void setRemuxAC3(boolean value) {
@@ -1406,7 +1407,7 @@ public class PmsConfiguration {
 		return PROFILE_PATH;
 	}
 
-	public String getProfileDir() {
+	public String getProfileDirectory() {
 		return PROFILE_DIRECTORY;
 	}
 
