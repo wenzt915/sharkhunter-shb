@@ -31,3 +31,4 @@ hide_transcode_folder = false
 mencoder_noass_scale = 2
 mencoder_noass_subpos = 10
 mencoder_nooutofsync = false
+channels.movieinfo = true

@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.logging.LogManager;
@@ -136,7 +137,7 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "(SharkHunter Build) 1.30.0 - SHB12"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.30.0 - SHB13"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -393,6 +394,21 @@ public class PMS {
 
 		minimal("Temp folder: " + configuration.getTempFolder()); //$NON-NLS-1$
 		minimal("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath()); //$NON-NLS-1$
+		HashMap<String, String> lfps = LoggingConfigFileLoader.getLogFilePaths();
+		if(lfps != null && lfps.size() > 0) {
+			if(lfps.size() == 1) {
+				Entry<String, String> entry = lfps.entrySet().iterator().next();
+				minimal(String.format("%s: %s", entry.getKey(), entry.getValue()));
+			} else {
+				minimal("Logging to multiple files:");
+				Iterator<Entry<String, String>> logsIterator = lfps.entrySet().iterator();
+				Entry<String, String> entry;
+				while(logsIterator.hasNext()) {
+					entry = logsIterator.next();
+					minimal(String.format("%s: %s", entry.getKey(), entry.getValue()));
+				}
+			}
+		}
 		minimal(""); //$NON-NLS-1$
 
 		minimal("Profile directory: " + configuration.getProfileDirectory());
