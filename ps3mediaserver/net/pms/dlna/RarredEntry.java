@@ -29,22 +29,25 @@ import net.pms.util.FileUtil;
 import de.innosystec.unrar.Archive;
 import de.innosystec.unrar.rarfile.FileHeader;
 
-public class RarredEntry extends DLNAResource implements IPushOutput {
-	
-	@Override
-	protected String getThumbnailURL() {
-		if (getType() == Format.IMAGE || getType() == Format.AUDIO) // no thumbnail support for now for real based disk images
-			return null;
-		return super.getThumbnailURL();
-	}
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+public class RarredEntry extends DLNAResource implements IPushOutput {
+	private static final Logger logger = LoggerFactory.getLogger(RarredEntry.class);
 	private String name;
 	private File pere;
 	private String fileheadername;
 	private long length;
-	//private boolean nullable;
-	//private byte data [];
-	
+
+	@Override
+	protected String getThumbnailURL() {
+		if (getType() == Format.IMAGE || getType() == Format.AUDIO) // no thumbnail support for now for real based disk images
+		{
+			return null;
+		}
+		return super.getThumbnailURL();
+	}
+
 	public RarredEntry(String name, File pere, String fileheadername, long length) {
 		this.fileheadername = fileheadername;
 		this.name = name;
@@ -53,40 +56,6 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 	}
 
 	public InputStream getInputStream() throws IOException {
-		/*if (data == null) {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			try {
-				Archive rarFile = new Archive(pere);
-				FileHeader header = null;
-				for(FileHeader fh:rarFile.getFileHeaders()) {
-					if (fh.getFileNameString().equals(fileheadername)) {
-						header = fh;
-						break;
-					}
-				}
-				if (header != null) {
-					rarFile.extractFile(header, baos);
-					data = baos.toByteArray();
-				}
-				rarFile.close();
-			} catch (RarException e) {
-				PMS.error("Error in unpacking of " + name, e);
-			} finally {
-				try {
-					baos.close();
-				} catch (IOException e) {}
-			}
-		}
-		if (data == null)
-			return null;
-		ByteArrayInputStream bytes = new ByteArrayInputStream(data);
-		return new UnusedInputStream(bytes, this, 10000) {
-			@Override
-			public void unusedStreamSignal() {
-				PMS.info("RarEntry Data not asked since 10 seconds... Nullify buffer");
-				data = null;
-			}
-		};*/
 		return null;
 	}
 
@@ -95,8 +64,9 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 	}
 
 	public long length() {
-		if (player != null && player.type() != Format.IMAGE)
+		if (player != null && player.type() != Format.IMAGE) {
 			return DLNAMediaInfo.TRANS_SIZE;
+		}
 		return length;
 	}
 
@@ -119,7 +89,7 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 		srtFile = FileUtil.doesSubtitlesExists(pere, null);
 		return ext != null;
 	}
-	
+
 	@Override
 	public boolean isUnderlyingSeekSupported() {
 		return length() < MAX_ARCHIVE_SIZE_SEEK;
@@ -128,38 +98,41 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 	@Override
 	public void push(final OutputStream out) throws IOException {
 		Runnable r = new Runnable() {
+
 			public void run() {
 				Archive rarFile = null;
 				try {
 					rarFile = new Archive(pere);
 					FileHeader header = null;
-					for(FileHeader fh:rarFile.getFileHeaders()) {
+					for (FileHeader fh : rarFile.getFileHeaders()) {
 						if (fh.getFileNameString().equals(fileheadername)) {
 							header = fh;
 							break;
 						}
 					}
 					if (header != null) {
-						PMS.debug("Starting the extraction of " + header.getFileNameString());
+						logger.trace("Starting the extraction of " + header.getFileNameString());
 						rarFile.extractFile(header, out);
 					}
 				} catch (Exception e) {
-					PMS.info("Unpack error, maybe it's normal, as backend can be terminated: " + e.getMessage());
+					logger.debug("Unpack error, maybe it's normal, as backend can be terminated: " + e.getMessage());
 				} finally {
 					try {
 						rarFile.close();
 						out.close();
-					} catch (IOException e) {}
+					} catch (IOException e) {
+					}
 				}
 			}
 		};
 		new Thread(r).start();
 	}
-	
+
 	@Override
 	public void resolve() {
-		if (ext == null || !ext.isVideo())
+		if (ext == null || !ext.isVideo()) {
 			return;
+		}
 		boolean found = false;
 		if (!found) {
 			if (media == null) {
@@ -178,8 +151,10 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 
 	@Override
 	public InputStream getThumbnailInputStream() throws IOException {
-		if (media != null && media.thumb != null)
+		if (media != null && media.thumb != null) {
 			return media.getThumbnailInputStream();
-		else return super.getThumbnailInputStream();
+		} else {
+			return super.getThumbnailInputStream();
+		}
 	}
 }

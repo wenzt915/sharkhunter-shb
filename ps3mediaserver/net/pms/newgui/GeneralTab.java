@@ -20,6 +20,7 @@ package net.pms.newgui;
 
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
@@ -43,8 +44,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-import org.apache.commons.lang.StringUtils;
-
 import net.pms.Messages;
 import net.pms.PMS;
 import net.pms.configuration.PmsConfiguration;
@@ -52,34 +51,37 @@ import net.pms.external.ExternalFactory;
 import net.pms.external.ExternalListener;
 import net.pms.util.KeyedComboBoxModel;
 
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jgoodies.forms.builder.PanelBuilder;
 import com.jgoodies.forms.factories.Borders;
 import com.jgoodies.forms.layout.CellConstraints;
 import com.jgoodies.forms.layout.FormLayout;
 import com.sun.jna.Platform;
 
-public class NetworkTab {
-
+public class GeneralTab {
+	private static final Logger logger = LoggerFactory.getLogger(GeneralTab.class);
 	private JCheckBox smcheckBox;
 	private JCheckBox newHTTPEngine;
 	private JCheckBox preventSleep;
-	//private JCheckBox  blockBox;
 	private JTextField host;
 	private JTextField port;
 	private JComboBox langs;
 	private JComboBox networkinterfacesCBX;
 	private JTextField ip_filter;
-	private JButton plugins[];
+	private JPanel pPlugins;
 	private final PmsConfiguration configuration;
 
-	NetworkTab(PmsConfiguration configuration) {
+	GeneralTab(PmsConfiguration configuration) {
 		this.configuration = configuration;
 	}
 
 	public JComponent build() {
 		FormLayout layout = new FormLayout(
-			"left:pref, 2dlu, p, 2dlu , p, 2dlu, p, 2dlu, pref:grow", //$NON-NLS-1$
-			"p, 0dlu, p, 0dlu, p, 3dlu, p, 3dlu, p, 3dlu,p, 3dlu, p, 15dlu, p, 3dlu,p, 3dlu, p,  3dlu, p, 3dlu, p, 3dlu, p,3dlu, p, 3dlu, p, 15dlu, p,3dlu, p, 3dlu, p, 15dlu, p, 3dlu, p, 3dlu,p, 3dlu, p, 3dlu, p, 15dlu, p, 3dlu, p, 3dlu, p, 3dlu, p, 3dlu, p, 3dlu, p, 3dlu "); //$NON-NLS-1$
+				"left:pref, 2dlu, p, 2dlu , p, 2dlu, p, 2dlu, pref:grow", //$NON-NLS-1$
+				"p, 0dlu, p, 0dlu, p, 3dlu, p, 3dlu, p, 3dlu,p, 3dlu, p, 15dlu, p, 3dlu,p, 3dlu, p,  3dlu, p, 3dlu, p, 3dlu, p,3dlu, p, 3dlu, p, 15dlu, p,3dlu, p, 3dlu, p, 15dlu, p, 3dlu, p"); //$NON-NLS-1$
 		PanelBuilder builder = new PanelBuilder(layout);
 		builder.setBorder(Borders.DLU4_BORDER);
 		builder.setOpaque(true);
@@ -89,7 +91,6 @@ public class NetworkTab {
 		smcheckBox = new JCheckBox(Messages.getString("NetworkTab.3")); //$NON-NLS-1$
 		smcheckBox.setContentAreaFilled(false);
 		smcheckBox.addItemListener(new ItemListener() {
-
 			public void itemStateChanged(ItemEvent e) {
 				PMS.getConfiguration().setMinimized((e.getStateChange() == ItemEvent.SELECTED));
 			}
@@ -108,7 +109,6 @@ public class NetworkTab {
 		final KeyedComboBoxModel kcbm = new KeyedComboBoxModel(new Object[]{"bg", "ca", "zhs", "zht", "cz", "da", "nl", "en", "fi", "fr", "de", "el", "is", "it", "ja", "no", "pl", "pt", "br", "ro", "ru", "sl", "es", "sv"}, new Object[]{"Bulgarian", "Catalan", "Chinese (Simplified)", "Chinese (Traditional)", "Czech", "Danish", "Dutch", "English", "Finnish", "French", "German", "Greek", "Icelandic", "Italian", "Japanese", "Norwegian", "Polish", "Portuguese", "Portuguese (Brazilian)", "Romanian", "Russian", "Slovenian", "Spanish", "Swedish"}); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$ //$NON-NLS-8$ //$NON-NLS-9$ //$NON-NLS-10$ //$NON-NLS-11$ //$NON-NLS-12$ //$NON-NLS-13$ //$NON-NLS-14$ //$NON-NLS-15$ //$NON-NLS-16$ //$NON-NLS-17$ //$NON-NLS-18$ //$NON-NLS-19$ //$NON-NLS-20$ //$NON-NLS-21$ //$NON-NLS-22$ //$NON-NLS-23$ //$NON-NLS-24$ //$NON-NLS-25$ //$NON-NLS-26$ //$NON-NLS-27$ //$NON-NLS-28$ //$NON-NLS-29$ //$NON-NLS-30$ //$NON-NLS-31$ //$NON-NLS-32$ //$NON-NLS-33$ //$NON-NLS-34$ //$NON-NLS-35$ //$NON-NLS-36$ //$NON-NLS-37$ //$NON-NLS-38$ //$NON-NLS-39$ //$NON-NLS-40$ //$NON-NLS-41$ //$NON-NLS-42$ //$NON-NLS-43$ //$NON-NLS-44$ //$NON-NLS-45$ //$NON-NLS-46$ //$NON-NLS-47$ //$NON-NLS-48$
 		langs = new JComboBox(kcbm);
 		langs.setEditable(false);
-		//langs.setSelectedIndex(0);
 		String defaultLang = null;
 		if (configuration.getLanguage() != null && configuration.getLanguage().length() > 0) {
 			defaultLang = configuration.getLanguage();
@@ -124,7 +124,6 @@ public class NetworkTab {
 		}
 
 		langs.addItemListener(new ItemListener() {
-
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getStateChange() == ItemEvent.SELECTED) {
 					configuration.setLanguage((String) kcbm.getSelectedKey());
@@ -138,7 +137,6 @@ public class NetworkTab {
 
 		JButton service = new JButton(Messages.getString("NetworkTab.4")); //$NON-NLS-1$
 		service.addActionListener(new ActionListener() {
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (PMS.get().installWin32Service()) {
@@ -163,12 +161,8 @@ public class NetworkTab {
 			service.setEnabled(false);
 		}
 
-
-
-
 		host = new JTextField(PMS.getConfiguration().getServerHostname());
 		host.addKeyListener(new KeyListener() {
-
 			@Override
 			public void keyPressed(KeyEvent e) {
 			}
@@ -183,10 +177,9 @@ public class NetworkTab {
 				PMS.get().getFrame().setReloadable(true);
 			}
 		});
-		// host.setEnabled( StringUtils.isBlank(configuration.getNetworkInterface())) ;
+
 		port = new JTextField(configuration.getServerPort() != 5001 ? "" + configuration.getServerPort() : ""); //$NON-NLS-1$ //$NON-NLS-2$
 		port.addKeyListener(new KeyListener() {
-
 			@Override
 			public void keyPressed(KeyEvent e) {
 			}
@@ -235,19 +228,16 @@ public class NetworkTab {
 				}
 			}
 		} catch (SocketException e1) {
-			PMS.error(null, e1);
+			logger.error(null, e1);
 		}
-
 
 		final KeyedComboBoxModel networkInterfaces = new KeyedComboBoxModel(names.toArray(), interfaces.toArray());
 		networkinterfacesCBX = new JComboBox(networkInterfaces);
 		networkInterfaces.setSelectedKey(configuration.getNetworkInterface());
 		networkinterfacesCBX.addItemListener(new ItemListener() {
-
 			public void itemStateChanged(ItemEvent e) {
 				if (e.getStateChange() == ItemEvent.SELECTED) {
 					configuration.setNetworkInterface((String) networkInterfaces.getSelectedKey());
-					//host.setEnabled( StringUtils.isBlank(configuration.getNetworkInterface())) ;
 					PMS.get().getFrame().setReloadable(true);
 				}
 			}
@@ -255,7 +245,6 @@ public class NetworkTab {
 
 		ip_filter = new JTextField(PMS.getConfiguration().getIpFilter());
 		ip_filter.addKeyListener(new KeyListener() {
-
 			@Override
 			public void keyPressed(KeyEvent e) {
 			}
@@ -285,12 +274,9 @@ public class NetworkTab {
 		cmp = (JComponent) cmp.getComponent(0);
 		cmp.setFont(cmp.getFont().deriveFont(Font.BOLD));
 
-
-
 		newHTTPEngine = new JCheckBox(Messages.getString("NetworkTab.32"));
 		newHTTPEngine.setSelected(PMS.getConfiguration().isHTTPEngineV2());
 		newHTTPEngine.addItemListener(new ItemListener() {
-
 			public void itemStateChanged(ItemEvent e) {
 				PMS.getConfiguration().setHTTPEngineV2((e.getStateChange() == ItemEvent.SELECTED));
 			}
@@ -300,7 +286,6 @@ public class NetworkTab {
 		preventSleep = new JCheckBox(Messages.getString("NetworkTab.33"));
 		preventSleep.setSelected(PMS.getConfiguration().isPreventsSleep());
 		preventSleep.addItemListener(new ItemListener() {
-
 			public void itemStateChanged(ItemEvent e) {
 				PMS.getConfiguration().setPreventsSleep((e.getStateChange() == ItemEvent.SELECTED));
 			}
@@ -311,14 +296,8 @@ public class NetworkTab {
 		cmp = (JComponent) cmp.getComponent(0);
 		cmp.setFont(cmp.getFont().deriveFont(Font.BOLD));
 
-		int y = 39;
-		plugins = new JButton[10];
-		for (int i = 0; i < plugins.length; i++) {
-			plugins[i] = new JButton();
-			plugins[i].setVisible(false);
-			builder.add(plugins[i], cc.xyw(1, y, 9));
-			y += 2;
-		}
+		pPlugins = new JPanel(new GridLayout());
+		builder.add(pPlugins, cc.xyw(1, 39, 9));
 
 		JPanel panel = builder.getPanel();
 		JScrollPane scrollPane = new JScrollPane(
@@ -329,27 +308,31 @@ public class NetworkTab {
 	}
 
 	public void addPlugins() {
+		FormLayout layout = new FormLayout(
+				"fill:10:grow", //$NON-NLS-1$
+				"p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p"); //$NON-NLS-1$
+		PanelBuilder builder = new PanelBuilder(layout);
 
-
-		int i = 0;
+		CellConstraints cc = new CellConstraints();
+		int i = 1;
 		for (final ExternalListener listener : ExternalFactory.getExternalListeners()) {
 			if(listener.config()==null)
 				continue;
-			plugins[i].setText(listener.name());
-			plugins[i].setVisible(true);
-
-			//listener to show option screen
-			plugins[i++].addActionListener(new ActionListener() {
-
+			if (i > 30) {
+				logger.warn("Plugin limit of 30 has been reached");
+				break;
+			}
+			JButton bPlugin = new JButton(listener.name());
+			// listener to show option screen
+			bPlugin.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					JOptionPane.showOptionDialog((JFrame) (SwingUtilities.getWindowAncestor((Component) PMS.get().getFrame())),
-						listener.config(), "Options", JOptionPane.CLOSED_OPTION, JOptionPane.PLAIN_MESSAGE, null, null, null);
+					JOptionPane.showOptionDialog((JFrame) (SwingUtilities.getWindowAncestor((Component) PMS.get().getFrame())), 
+							listener.config(), "Options", JOptionPane.CLOSED_OPTION, JOptionPane.PLAIN_MESSAGE, null, null, null);
 				}
 			});
-
-			//i++;
+			builder.add(bPlugin, cc.xy(1, i++));
 		}
-
+		pPlugins.add(builder.getPanel());
 	}
 }

@@ -108,7 +108,7 @@ import net.pms.network.HTTPServer;
 import net.pms.network.ProxyServer;
 import net.pms.network.UPNPHelper;
 import net.pms.newgui.LooksFrame;
-import net.pms.newgui.NetworkTab;
+import net.pms.newgui.GeneralTab;
 import net.pms.update.AutoUpdater;
 import net.pms.util.PMSUtil;
 import net.pms.util.ProcessUtil;
@@ -137,11 +137,11 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "(SharkHunter Build) 1.30.0 - SHB13"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.30.0 - SHB14"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
-	public static final Logger logger = LoggerFactory.getLogger(PMS.class);
+	private static final Logger logger = LoggerFactory.getLogger(PMS.class);
 	// TODO(tcox):  This shouldn't be static
 	private static PmsConfiguration configuration;
 
@@ -272,7 +272,7 @@ public class PMS {
 	 * @throws Exception TODO: Check which exceptions to use
 	 */
 	private boolean checkProcessExistence(String name, boolean error, File workDir, String... params) throws Exception {
-		info("launching: " + params[0]); //$NON-NLS-1$
+		logger.debug("launching: " + params[0]); //$NON-NLS-1$
 
 		try {
 			ProcessBuilder pb = new ProcessBuilder(params);
@@ -313,7 +313,7 @@ public class PMS {
 			int exit = process.exitValue();
 			if (exit != 0) {
 				if (error) {
-					minimal("[" + exit + "] Cannot launch " + name + " / Check the presence of " + params[0] + " ..."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+					logger.info("[" + exit + "] Cannot launch " + name + " / Check the presence of " + params[0] + " ..."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 				}
 				return false;
 			}
@@ -325,11 +325,13 @@ public class PMS {
 			return false;
 		}
 	}
+
 	/**
 	 * @see System#err
 	 */
 	@SuppressWarnings("unused")
 	private final PrintStream stderr = System.err;
+
 	/**Main resource database that supports search capabilities. Also known as media cache.
 	 * @see DLNAMediaDatabase
 	 */
@@ -348,7 +350,7 @@ public class PMS {
 				/*try {
 				org.h2.tools.Server server = org.h2.tools.Server.createWebServer(null);
 				server.start();
-				minimal("Starting H2 console on port " + server.getPort());
+				logger.info("Starting H2 console on port " + server.getPort());
 				} catch (Exception e) {
 				e.printStackTrace();
 				}*/
@@ -379,41 +381,41 @@ public class PMS {
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 		proxy = -1;
 
-		minimal("Starting PS3 Media Server " + VERSION); //$NON-NLS-1$
-		minimal("by shagrath / 2008-2011"); //$NON-NLS-1$
-		minimal("http://ps3mediaserver.org"); //$NON-NLS-1$
-		minimal("http://code.google.com/p/ps3mediaserver"); //$NON-NLS-1$
-		minimal("http://ps3mediaserver.blogspot.com"); //$NON-NLS-1$
-		minimal(""); //$NON-NLS-1$
-		minimal("Java: " + System.getProperty("java.version") + "-" + System.getProperty("java.vendor")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-		minimal("OS: " + System.getProperty("os.name") + " " + System.getProperty("os.arch") + " " + System.getProperty("os.version")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
-		minimal("Encoding: " + System.getProperty("file.encoding")); //$NON-NLS-1$ //$NON-NLS-2$
+		logger.info("Starting PS3 Media Server " + VERSION); //$NON-NLS-1$
+		logger.info("by shagrath / 2008-2011"); //$NON-NLS-1$
+		logger.info("http://ps3mediaserver.org"); //$NON-NLS-1$
+		logger.info("http://code.google.com/p/ps3mediaserver"); //$NON-NLS-1$
+		logger.info("http://ps3mediaserver.blogspot.com"); //$NON-NLS-1$
+		logger.info(""); //$NON-NLS-1$
+		logger.info("Java: " + System.getProperty("java.version") + "-" + System.getProperty("java.vendor")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+		logger.info("OS: " + System.getProperty("os.name") + " " + System.getProperty("os.arch") + " " + System.getProperty("os.version")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
+		logger.info("Encoding: " + System.getProperty("file.encoding")); //$NON-NLS-1$ //$NON-NLS-2$
 
 		String cwd = new File("").getAbsolutePath();
-		minimal("Working directory: " + cwd);
+		logger.info("Working directory: " + cwd);
 
-		minimal("Temp folder: " + configuration.getTempFolder()); //$NON-NLS-1$
-		minimal("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath()); //$NON-NLS-1$
+		logger.info("Temp folder: " + configuration.getTempFolder()); //$NON-NLS-1$
+		logger.info("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath()); //$NON-NLS-1$
 		HashMap<String, String> lfps = LoggingConfigFileLoader.getLogFilePaths();
 		if(lfps != null && lfps.size() > 0) {
 			if(lfps.size() == 1) {
 				Entry<String, String> entry = lfps.entrySet().iterator().next();
-				minimal(String.format("%s: %s", entry.getKey(), entry.getValue()));
+				logger.info(String.format("%s: %s", entry.getKey(), entry.getValue()));
 			} else {
-				minimal("Logging to multiple files:");
+				logger.info("Logging to multiple files:");
 				Iterator<Entry<String, String>> logsIterator = lfps.entrySet().iterator();
 				Entry<String, String> entry;
 				while(logsIterator.hasNext()) {
 					entry = logsIterator.next();
-					minimal(String.format("%s: %s", entry.getKey(), entry.getValue()));
+					logger.info(String.format("%s: %s", entry.getKey(), entry.getValue()));
 				}
 			}
 		}
-		minimal(""); //$NON-NLS-1$
+		logger.info(""); //$NON-NLS-1$
 
-		minimal("Profile directory: " + configuration.getProfileDirectory());
+		logger.info("Profile directory: " + configuration.getProfileDirectory());
 		String profilePath = configuration.getProfilePath();
-		minimal("Profile path: " + profilePath);
+		logger.info("Profile path: " + profilePath);
 		
 		debug("Memory: "+Runtime.getRuntime().maxMemory());
 
@@ -424,34 +426,34 @@ public class PMS {
 				profileFile.canRead()    ? "r" : "-",
 				profileFile.canWrite()   ? "w" : "-"
 			);
-			minimal("Profile status: " + status);
+			logger.info("Profile status: " + status);
 		} else {
-			minimal("Profile status: no such file");
+			logger.info("Profile status: no such file");
 		}
 
-		minimal("Profile name: " + configuration.getProfileName()); //$NON-NLS-1$
-		minimal(""); //$NON-NLS-1$
+		logger.info("Profile name: " + configuration.getProfileName()); //$NON-NLS-1$
+		logger.info(""); //$NON-NLS-1$
 
 		RendererConfiguration.loadRendererConfigurations();
 
-		minimal("Checking MPlayer font cache. It can take a minute or so.");
+		logger.info("Checking MPlayer font cache. It can take a minute or so.");
 		checkProcessExistence("MPlayer", true, null, configuration.getMplayerPath(), "dummy");
       		if(isWindows()) {
 			checkProcessExistence("MPlayer", true, configuration.getTempFolder(), configuration.getMplayerPath(), "dummy");
 		}
-		minimal("Done!");
+		logger.info("Done!");
 
 		// check the existence of Vsfilter.dll
 		if (registry.isAvis() && registry.getAvsPluginsDir() != null) {
-			minimal("Found AviSynth plugins dir: " + registry.getAvsPluginsDir().getAbsolutePath()); //$NON-NLS-1$
+			logger.info("Found AviSynth plugins dir: " + registry.getAvsPluginsDir().getAbsolutePath()); //$NON-NLS-1$
 			File vsFilterdll = new File(registry.getAvsPluginsDir(), "VSFilter.dll"); //$NON-NLS-1$
 			if (!vsFilterdll.exists()) {
-				minimal("VSFilter.dll is not in the AviSynth plugins directory. This can cause problems when trying to play subtitled videos with AviSynth"); //$NON-NLS-1$
+				logger.info("VSFilter.dll is not in the AviSynth plugins directory. This can cause problems when trying to play subtitled videos with AviSynth"); //$NON-NLS-1$
 			}
 		}
 
 		if (registry.getVlcv() != null && registry.getVlcp() != null) {
-			minimal("Found VideoLAN version " + registry.getVlcv() + " at: " + registry.getVlcp()); //$NON-NLS-1$ //$NON-NLS-2$
+			logger.info("Found VideoLAN version " + registry.getVlcv() + " at: " + registry.getVlcp()); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 
 		//check if Kerio is installed
@@ -504,8 +506,8 @@ public class PMS {
 		try {
 			binding = server.start();
 		} catch (BindException b) {
-			minimal("FATAL ERROR: Unable to bind on port: " + configuration.getServerPort() + ", because: " + b.getMessage()); //$NON-NLS-1$ //$NON-NLS-2$
-			minimal("Maybe another process is running or the hostname is wrong."); //$NON-NLS-1$
+			logger.info("FATAL ERROR: Unable to bind on port: " + configuration.getServerPort() + ", because: " + b.getMessage()); //$NON-NLS-1$ //$NON-NLS-2$
+			logger.info("Maybe another process is running or the hostname is wrong."); //$NON-NLS-1$
 		}
 		new Thread() {
 
@@ -534,12 +536,12 @@ public class PMS {
 			return false;
 		}
 		if (proxy > 0) {
-			minimal("Starting HTTP Proxy Server on port: " + proxy); //$NON-NLS-1$
+			logger.info("Starting HTTP Proxy Server on port: " + proxy); //$NON-NLS-1$
 			proxyServer = new ProxyServer(proxy);
 		}
 
 		if (getDatabase() != null) {
-			minimal("A tiny media library admin interface is available at: http://" + server.getHost() + ":" + server.getPort() + "/console/home");
+			logger.info("A tiny media library admin interface is available at: http://" + server.getHost() + ":" + server.getPort() + "/console/home");
 		}
 
 		frame.serverReady();
@@ -555,12 +557,12 @@ public class PMS {
 					}
 					UPNPHelper.shutDownListener();
 					UPNPHelper.sendByeBye();
-					info("Forcing shutdown of all active processes"); //$NON-NLS-1$
+					logger.debug("Forcing shutdown of all active processes"); //$NON-NLS-1$
 					for (Process p : currentProcesses) {
 						try {
 							p.exitValue();
 						} catch (IllegalThreadStateException ise) {
-							debug("Forcing shutdown of process: " + p); //$NON-NLS-1$
+							logger.trace("Forcing shutdown of process: " + p); //$NON-NLS-1$
 							ProcessUtil.destroy(p);
 						}
 					}
@@ -572,7 +574,7 @@ public class PMS {
 		});
 
 		UPNPHelper.sendAlive();
-		debug("Waiting 250 milliseconds..."); //$NON-NLS-1$
+		logger.trace("Waiting 250 milliseconds..."); //$NON-NLS-1$
 		Thread.sleep(250);
 		UPNPHelper.listen();
 
@@ -659,14 +661,14 @@ public class PMS {
 							}
 							// catch exception here and go with parsing
 						} catch (ArrayIndexOutOfBoundsException e) {
-							minimal("Error at line " + br.getLineNumber() + " of WEB.conf: " + e.getMessage()); //$NON-NLS-1$
+							logger.info("Error at line " + br.getLineNumber() + " of WEB.conf: " + e.getMessage()); //$NON-NLS-1$
 						}
 					}
 				}
 				br.close();
 			} catch (Exception e) {
 				e.printStackTrace();
-				minimal("Unexpected error in WEB.conf: " + e.getMessage()); //$NON-NLS-1$
+				logger.info("Unexpected error in WEB.conf: " + e.getMessage()); //$NON-NLS-1$
 			}
 		}
 
@@ -736,7 +738,7 @@ public class PMS {
 					}
 					getRootFolder(renderer).addChild(vf);
 				} else {
-					minimal("iPhoto folder not found !?");
+					logger.info("iPhoto folder not found !?");
 				}
 			} catch (Exception e) {
 				logger.error("Something went wrong with the iPhoto Library scan: ", e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -1015,10 +1017,10 @@ public class PMS {
 	/**Executes the needed commands in order to make PMS a Windows service that starts whenever the machine is started.
 	 * This function is called from the Network tab.
 	 * @return true if PMS could be installed as a Windows service.
-	 * @see NetworkTab#build()
+	 * @see GeneralTab#build()
 	 */
 	public boolean installWin32Service() {
-		minimal(Messages.getString("PMS.41")); //$NON-NLS-1$
+		logger.info(Messages.getString("PMS.41")); //$NON-NLS-1$
 		String cmdArray[] = new String[]{"win32/service/wrapper.exe", "-r", "wrapper.conf"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		OutputParams output = new OutputParams(configuration);
 		output.noexitcheck = true;
@@ -1181,7 +1183,7 @@ public class PMS {
 			// http://ps3mediaserver.org/forum/viewtopic.php?f=14&t=8883&start=250#p43520
 			folder = folder.replaceAll("&comma;", ","); //$NON-NLS-1$ //$NON-NLS-2$
 			if (log) {
-				debug("Checking shared folder: " + folder); //$NON-NLS-1$
+				logger.trace("Checking shared folder: " + folder); //$NON-NLS-1$
 			}
 			File file = new File(folder);
 			if (file.exists()) {
@@ -1207,7 +1209,7 @@ public class PMS {
 	// XXX: don't try to optimize this by reusing the same server instance.
 	// see the comment above HTTPServer.stop()
 	public void reset() throws IOException {
-		debug("Waiting 1 second..."); //$NON-NLS-1$
+		logger.trace("Waiting 1 second..."); //$NON-NLS-1$
 		UPNPHelper.sendByeBye();
 		server.stop();
 		server = null;
@@ -1224,13 +1226,12 @@ public class PMS {
 		UPNPHelper.sendAlive();
 	}
 
-	// (innot): A note on Level names: PMS uses the following logging levels
-	// in ascending order: DEBUG, INFO, TRACE/minimal, ERROR
-	// The SLF4J logging API uses TRACE, DEBUG, INFO, WARN and ERROR
-	// So the levels get remapped in the following convenience methods.
-	// TODO: remove these methods and replace their callers with direct 
-	// calls to the SLF4J API. 
-	/**Adds a message to the debug stream, or {@link System#out} in case the
+	// Cannot remove these methods because of backwards compatibility;
+	// none of the PMS code uses it, but some plugins still do.
+	
+	/**
+	 * @deprecated Use the SLF4J logging API instead.
+	 * Adds a message to the debug stream, or {@link System#out} in case the
 	 * debug stream has not been set up yet.
 	 * @param msg {@link String} to be added to the debug stream.
 	 */
@@ -1238,14 +1239,18 @@ public class PMS {
 		logger.trace(msg);
 	}
 
-	/**Adds a message to the info stream.
+	/**
+	 * @deprecated Use the SLF4J logging API instead.
+	 * Adds a message to the info stream.
 	 * @param msg {@link String} to be added to the info stream.
 	 */
 	public static void info(String msg) {
 		logger.debug(msg);
 	}
 
-	/**Adds a message to the minimal stream. This stream is also
+	/**
+	 * @deprecated Use the SLF4J logging API instead.
+	 * Adds a message to the minimal stream. This stream is also
 	 * shown in the Trace tab.
 	 * @param msg {@link String} to be added to the minimal stream.
 	 */
@@ -1253,7 +1258,9 @@ public class PMS {
 		logger.info(msg);
 	}
 
-	/**Adds a message to the error stream. This is usually called by
+	/**
+	 * @deprecated Use the SLF4J logging API instead.
+	 * Adds a message to the error stream. This is usually called by
 	 * statements that are in a try/catch block.
 	 * @param msg {@link String} to be added to the error stream
 	 * @param t {@link Throwable} comes from an {@link Exception} 
@@ -1261,7 +1268,7 @@ public class PMS {
 	public static void error(String msg, Throwable t) {
 		logger.error(msg, t);
 	}
-
+	
 	/**Universally Unique Identifier used in the UPnP server.
 	 * 
 	 */
@@ -1316,7 +1323,7 @@ public class PMS {
 	 */
 	public String getServerName() {
 		if (serverName == null) {
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			sb.append(System.getProperty("os.name").replace(" ", "_")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			sb.append("-"); //$NON-NLS-1$
 			sb.append(System.getProperty("os.arch").replace(" ", "_")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -1356,10 +1363,10 @@ public class PMS {
 	 * @return
 	 */
 	public Format getAssociatedExtension(String filename) {
-		debug("Search extension for " + filename); //$NON-NLS-1$
+		logger.trace("Search extension for " + filename); //$NON-NLS-1$
 		for (Format ext : extensions) {
 			if (ext.match(filename)) {
-				debug("Found 1! " + ext.getClass().getName()); //$NON-NLS-1$
+				logger.trace("Found 1! " + ext.getClass().getName()); //$NON-NLS-1$
 				return ext.duplicate();
 			}
 		}
@@ -1505,3 +1512,4 @@ public class PMS {
 	}
 	
 }
+

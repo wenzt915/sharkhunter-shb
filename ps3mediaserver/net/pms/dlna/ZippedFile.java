@@ -32,11 +32,14 @@ import java.util.zip.ZipInputStream;
 import net.pms.PMS;
 import net.pms.formats.Format;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ZippedFile extends DLNAResource {
-	
+	private static final Logger logger = LoggerFactory.getLogger(ZippedFile.class);
 	private File z;
 	private ZipFile zip;
-	
+
 	public ZippedFile(File z) {
 		this.z = z;
 		lastmodified = z.lastModified();
@@ -45,21 +48,22 @@ public class ZippedFile extends DLNAResource {
 			Enumeration<? extends ZipEntry> enm = zip.entries();
 			while (enm.hasMoreElements()) {
 				ZipEntry ze = enm.nextElement();
-				//if (ze.getSize() > -1 && ze.getSize() < MAX_ARCHIVE_ENTRY_SIZE)
-					addChild(new ZippedEntry(z, ze.getName(), ze.getSize()));
+				addChild(new ZippedEntry(z, ze.getName(), ze.getSize()));
 			}
 			zip.close();
 		} catch (ZipException e) {
-			PMS.error(null, e);
+			logger.error(null, e);
 		} catch (IOException e) {
-			PMS.error(null, e);
+			logger.error(null, e);
 		}
 	}
-	
+
 	@Override
 	protected String getThumbnailURL() {
-		if (getType() == Format.IMAGE) // no thumbnail support for now for real based disk images
+		if (getType() == Format.IMAGE) {
+			// no thumbnail support for now for real based disk images
 			return null;
+		}
 		return super.getThumbnailURL();
 	}
 
@@ -82,7 +86,7 @@ public class ZippedFile extends DLNAResource {
 	public boolean isFolder() {
 		return true;
 	}
-	
+
 	public long lastModified() {
 		return 0;
 	}
@@ -96,5 +100,4 @@ public class ZippedFile extends DLNAResource {
 	public boolean isValid() {
 		return z.exists();
 	}
-
 }

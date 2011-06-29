@@ -29,23 +29,25 @@ import net.pms.PMS;
 import net.pms.formats.Format;
 import net.pms.util.FileUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class ZippedEntry extends DLNAResource implements IPushOutput{
-	
-	@Override
-	protected String getThumbnailURL() {
-		if (getType() == Format.IMAGE || getType() == Format.AUDIO) // no thumbnail support for now for real based disk images
-			return null;
-		return super.getThumbnailURL();
-	}
-
+public class ZippedEntry extends DLNAResource implements IPushOutput {
+	private static final Logger logger = LoggerFactory.getLogger(ZippedEntry.class);
 	private File z;
 	private String zeName;
 	private long length;
 	private ZipFile zipFile;
-	//private boolean nullable;
-	//private byte data [];
-	
+
+	@Override
+	protected String getThumbnailURL() {
+		if (getType() == Format.IMAGE || getType() == Format.AUDIO) {
+			// no thumbnail support for now for real based disk images
+			return null;
+		}
+		return super.getThumbnailURL();
+	}
+
 	public ZippedEntry(File z, String zeName, long length) {
 		this.zeName = zeName;
 		this.z = z;
@@ -53,30 +55,6 @@ public class ZippedEntry extends DLNAResource implements IPushOutput{
 	}
 
 	public InputStream getInputStream() {
-		/*try {
-			zipFile = new ZipFile(z);
-			ZipEntry ze = zipFile.getEntry(zeName);
-			InputStream in = zipFile.getInputStream(ze);
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			int n = -1;
-			data = new byte [65536];
-			while ((n=in.read(data)) > -1) {
-				baos.write(data, 0, n);
-			}
-			in.close();
-			baos.close();
-			data = baos.toByteArray();
-			zipFile.close();
-			return new UnusedInputStream(new ByteArrayInputStream(data), this, 5000) {
-				@Override
-				public void unusedStreamSignal() {
-					PMS.info("ZipEntry Data not asked since 5 seconds... Nullify buffer");
-					data = null;
-				}
-			};
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}*/
 		return null;
 	}
 
@@ -85,8 +63,9 @@ public class ZippedEntry extends DLNAResource implements IPushOutput{
 	}
 
 	public long length() {
-		if (player != null && player.type() != Format.IMAGE)
+		if (player != null && player.type() != Format.IMAGE) {
 			return DLNAMediaInfo.TRANS_SIZE;
+		}
 		return length;
 	}
 
@@ -109,12 +88,12 @@ public class ZippedEntry extends DLNAResource implements IPushOutput{
 		srtFile = FileUtil.doesSubtitlesExists(z, null);
 		return ext != null;
 	}
-	
+
 	@Override
 	public boolean isUnderlyingSeekSupported() {
 		return length() < MAX_ARCHIVE_SIZE_SEEK;
 	}
-	
+
 	@Override
 	public void push(final OutputStream out) throws IOException {
 		Runnable r = new Runnable() {
@@ -124,28 +103,30 @@ public class ZippedEntry extends DLNAResource implements IPushOutput{
 					ZipEntry ze = zipFile.getEntry(zeName);
 					InputStream in = zipFile.getInputStream(ze);
 					int n = -1;
-					byte data [] = new byte [65536];
-					while ((n=in.read(data)) > -1) {
+					byte data[] = new byte[65536];
+					while ((n = in.read(data)) > -1) {
 						out.write(data, 0, n);
 					}
 					in.close();
 				} catch (Exception e) {
-					PMS.info("Unpack error, maybe it's normal, as backend can be terminated: " + e.getMessage());
+					logger.debug("Unpack error, maybe it's normal, as backend can be terminated: " + e.getMessage());
 				} finally {
 					try {
 						zipFile.close();
 						out.close();
-					} catch (IOException e) {}
+					} catch (IOException e) {
+					}
 				}
 			}
 		};
 		new Thread(r).start();
 	}
-	
+
 	@Override
 	public void resolve() {
-		if (ext == null || !ext.isVideo())
+		if (ext == null || !ext.isVideo()) {
 			return;
+		}
 		boolean found = false;
 		if (!found) {
 			if (media == null) {
@@ -164,9 +145,10 @@ public class ZippedEntry extends DLNAResource implements IPushOutput{
 
 	@Override
 	public InputStream getThumbnailInputStream() throws IOException {
-		if (media != null && media.thumb != null)
+		if (media != null && media.thumb != null) {
 			return media.getThumbnailInputStream();
-		else return super.getThumbnailInputStream();
+		} else {
+			return super.getThumbnailInputStream();
+		}
 	}
-
 }
