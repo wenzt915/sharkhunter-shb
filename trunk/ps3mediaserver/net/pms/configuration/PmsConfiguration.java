@@ -23,15 +23,20 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sun.jna.Platform;
 
 public class PmsConfiguration {
+	private static final Logger logger = LoggerFactory.getLogger(PmsConfiguration.class);
 	private static final int DEFAULT_PROXY_SERVER_PORT = -1;
 	private static final int DEFAULT_SERVER_PORT = 5001;
+
 	// MEncoder has a hardwired maximum of 8 threads for -lavcopts and -lavdopts:
 	// https://code.google.com/p/ps3mediaserver/issues/detail?id=517
 	private static final int MENCODER_MAX_THREADS = 8;
+
 	private static final String KEY_ALTERNATE_SUBS_FOLDER = "alternate_subs_folder";
 	private static final String KEY_ALTERNATE_THUMB_FOLDER = "alternate_thumb_folder";
 	private static final String KEY_AUDIO_BITRATE = "audiobitrate";
@@ -53,16 +58,16 @@ public class PmsConfiguration {
 	private static final String KEY_FFMPEG_SETTINGS = "ffmpeg";
 	private static final String KEY_FIX_25FPS_AV_MISMATCH = "fix_25fps_av_mismatch";
 	private static final String KEY_FORCETRANSCODE = "forcetranscode";
- 	private static final String KEY_HIDE_EMPTY_FOLDERS = "hide_empty_folders";
+	private static final String KEY_HIDE_EMPTY_FOLDERS = "hide_empty_folders";
 	private static final String KEY_HIDE_ENGINENAMES = "hide_enginenames";
 	private static final String KEY_HIDE_EXTENSIONS = "hide_extensions";
- 	private static final String KEY_HIDE_MEDIA_LIBRARY_FOLDER = "hide_media_library_folder";
+	private static final String KEY_HIDE_MEDIA_LIBRARY_FOLDER = "hide_media_library_folder";
 	private static final String KEY_HIDE_TRANSCODE_FOLDER = "hide_transcode_folder";
 	private static final String KEY_HIDE_VIDEO_SETTINGS = "hidevideosettings";
 	private static final String KEY_HTTP_ENGINE_V2 = "http_engine_v2";
 	private static final String KEY_IP_FILTER = "ip_filter";
- 	private static final String KEY_IPHOTO_ENABLED = "iphoto";
- 	private static final String KEY_ITUNES_ENABLED = "itunes";
+	private static final String KEY_IPHOTO_ENABLED = "iphoto";
+	private static final String KEY_ITUNES_ENABLED = "itunes";
 	private static final String KEY_LANGUAGE = "language";
 	private static final String KEY_LOGGING_LEVEL = "level";
 	private static final String KEY_MAX_AUDIO_BUFFER = "maxaudiobuffer";
@@ -77,10 +82,10 @@ public class PmsConfiguration {
 	private static final String KEY_MENCODER_ASS_SHADOW = "mencoder_ass_shadow";
 	private static final String KEY_MENCODER_AUDIO_LANGS = "mencoder_audiolangs";
 	private static final String KEY_MENCODER_AUDIO_SUB_LANGS = "mencoder_audiosublangs";
-	private static final String KEY_MENCODER_DECODE = "mencoder_decode";	
+	private static final String KEY_MENCODER_DECODE = "mencoder_decode";
 	private static final String KEY_MENCODER_DISABLE_SUBS = "mencoder_disablesubs";
 	private static final String KEY_MENCODER_FONT_CONFIG = "mencoder_fontconfig";
-	private static final String KEY_MENCODER_FONT = "mencoder_font"; 
+	private static final String KEY_MENCODER_FONT = "mencoder_font";
 	private static final String KEY_MENCODER_FORCE_FPS = "mencoder_forcefps";
 	private static final String KEY_MENCODER_INTELLIGENT_SYNC = "mencoder_intelligent_sync";
 	private static final String KEY_MENCODER_MAIN_SETTINGS = "mencoder_encode";
@@ -91,7 +96,7 @@ public class PmsConfiguration {
 	private static final String KEY_MENCODER_NOASS_OUTLINE = "mencoder_noass_outline";
 	private static final String KEY_MENCODER_NOASS_SCALE = "mencoder_noass_scale";
 	private static final String KEY_MENCODER_NOASS_SUBPOS = "mencoder_noass_subpos";
-	private static final String KEY_MENCODER_NO_OUT_OF_SYNC  = "mencoder_nooutofsync";
+	private static final String KEY_MENCODER_NO_OUT_OF_SYNC = "mencoder_nooutofsync";
 	private static final String KEY_MENCODER_OVERSCAN_COMPENSATION_WIDTH = "mencoder_overscan_compensation_width";
 	private static final String KEY_MENCODER_OVERSCAN_COMPENSATION_HEIGHT = "mencoder_overscan_compensation_height";
 	private static final String KEY_MENCODER_REMUX_AC3 = "mencoder_remux_ac3";
@@ -123,7 +128,7 @@ public class PmsConfiguration {
 	private static final String KEY_SHARES = "shares";
 	private static final String KEY_SKIP_LOOP_FILTER_ENABLED = "skiploopfilter";
 	private static final String KEY_SORT_METHOD = "key_sort_method";
-	private static final String KEY_SUBS_COLOR = "subs_color"; 
+	private static final String KEY_SUBS_COLOR = "subs_color";
 	private static final String KEY_TEMP_FOLDER_PATH = "temp";
 	private static final String KEY_THUMBNAIL_SEEK_POS = "thumbnail_seek_pos";
 	private static final String KEY_THUMBNAILS_ENABLED = "thumbnails";
@@ -131,7 +136,6 @@ public class PmsConfiguration {
 	private static final String KEY_TRANSCODE_KEEP_FIRST_CONNECTION = "transcode_keep_first_connection";
 	private static final String KEY_TSMUXER_FORCEFPS = "tsmuxer_forcefps";
 	private static final String KEY_TSMUXER_PREREMIX_AC3 = "tsmuxer_preremix_ac3";
-	// private static final String KEY_TSMUXER_PREREMUX_PCM = "tsmuxer_preremux_pcm";
 	private static final String KEY_TURBO_MODE_ENABLED = "turbomode";
 	private static final String KEY_USE_CACHE = "usecache";
 	private static final String KEY_USE_MPLAYER_FOR_THUMBS = "use_mplayer_for_video_thumbs";
@@ -171,24 +175,20 @@ public class PmsConfiguration {
 	// the default profile name displayed on the renderer
 	private static String HOSTNAME;
 
-	private static final String DEFAULT_AVI_SYNTH_SCRIPT = 
-		  "#AviSynth script is now fully customisable !\n" 
+	private static final String DEFAULT_AVI_SYNTH_SCRIPT =
+		"#AviSynth script is now fully customisable !\n"
 		+ "#You must use the following variables (\"clip\" being the avisynth variable of the movie):\n"
-		+ "#<movie>: insert the complete DirectShowSource instruction [ clip=DirectShowSource(movie, convertfps) ]\n" 
-		+ "#<sub>: insert the complete TextSub/VobSub instruction if there's any detected srt/sub/idx/ass subtitle file\n" 
-		+ "#<moviefilename>: variable of the movie filename, if you want to do all this by yourself\n" 
+		+ "#<movie>: insert the complete DirectShowSource instruction [ clip=DirectShowSource(movie, convertfps) ]\n"
+		+ "#<sub>: insert the complete TextSub/VobSub instruction if there's any detected srt/sub/idx/ass subtitle file\n"
+		+ "#<moviefilename>: variable of the movie filename, if you want to do all this by yourself\n"
 		+ "#Be careful, the custom script MUST return the clip object\n"
-		+ "<movie>\n" 
-		+ "<sub>\n" 
+		+ "<movie>\n"
+		+ "<sub>\n"
 		+ "return clip";
-	
 	private static final String BUFFER_TYPE_FILE = "file";
-	
 	private static final int MAX_MAX_MEMORY_BUFFER_SIZE = 600;
-	
 	private static final char LIST_SEPARATOR = ',';
 	private static final String KEY_FOLDERS = "folders";
-
 	private final PropertiesConfiguration configuration;
 	private final TempFolder tempFolder;
 	private final ProgramPathDisabler programPaths;
@@ -203,7 +203,7 @@ public class PmsConfiguration {
 		adding more configurables - e.g. web_conf = ... - is on the TODO list.
 
 		1) if PMS_PROFILE is not set, PMS.conf is located in: 
-		 
+
 			Windows:             %ALLUSERSPROFILE%\$build
 			Mac OS X:            $HOME/Library/Application Support/$build
 			Everything else:     $HOME/.config/$build
@@ -211,7 +211,7 @@ public class PmsConfiguration {
 		- where $build is a subdirectory that ensures incompatible PMS builds don't target/clobber
 		the same configuration files. The default value for $build is "PMS". Other builds might use e.g.
 		"PMS Rendr Edition" or "pms-mlx".
-		 
+
 		2) if a relative or absolute *directory path* is supplied (the directory must exist),
 		it is used as the profile directory and the profile is located there under the default profile name (PMS.conf):
 
@@ -229,8 +229,7 @@ public class PmsConfiguration {
 			PMS_PROFILE = PMS.conf            # profile dir = .
 			PMS_PROFILE = folder/dev.conf     # profile dir = folder
 			PMS_PROFILE = /path/to/some.file  # profile dir = /path/to/
-    */
-
+	 */
 	private static final String DEFAULT_PROFILE_FILENAME = "PMS.conf";
 	private static final String PROFILE_DIRECTORY; // path to directory containing PMS config files
 	private static final String PROFILE_PATH; // abs path to profile file e.g. /path/to/PMS.conf
@@ -292,7 +291,7 @@ public class PmsConfiguration {
 
 	public PmsConfiguration() throws ConfigurationException, IOException {
 		configuration = new PropertiesConfiguration();
-		configuration.setListDelimiter((char)0);
+		configuration.setListDelimiter((char) 0);
 		configuration.setFileName(PROFILE_PATH);
 
 		File pmsConfFile = new File(PROFILE_PATH);
@@ -419,10 +418,10 @@ public class PmsConfiguration {
 	 * default.
 	 */
 	private static ProgramPathDisabler createProgramPathsChain(Configuration configuration) {
-		return  new ProgramPathDisabler(
-				new ConfigurationProgramPaths(configuration, 
-				new WindowsRegistryProgramPaths(
-				new PlatformSpecificDefaultPathsFactory().get())));
+		return new ProgramPathDisabler(
+			new ConfigurationProgramPaths(configuration,
+			new WindowsRegistryProgramPaths(
+			new PlatformSpecificDefaultPathsFactory().get())));
 	}
 
 	public File getTempFolder() throws IOException {
@@ -444,7 +443,7 @@ public class PmsConfiguration {
 	public String getMencoderPath() {
 		return programPaths.getMencoderPath();
 	}
-	
+
 	public String getMencoderMTPath() {
 		return programPaths.getMencoderMTPath();
 	}
@@ -498,13 +497,8 @@ public class PmsConfiguration {
 	}
 
 	public boolean isTsmuxerPreremuxAc3() {
-		//return configuration.getBoolean(KEY_TSMUXER_PREREMIX_AC3, false);
 		return true;
 	}
-
-	/*public boolean isTsmuxerPreremuxPcm() {
-		return configuration.getBoolean(KEY_TSMUXER_PREREMUX_PCM, false);
-	}*/
 
 	public int getAudioBitrate() {
 		return getInt(KEY_AUDIO_BITRATE, 640);
@@ -513,10 +507,6 @@ public class PmsConfiguration {
 	public void setTsmuxerPreremuxAc3(boolean value) {
 		configuration.setProperty(KEY_TSMUXER_PREREMIX_AC3, value);
 	}
-
-	/*public void setTsmuxerPreremuxPcm(boolean value) {
-		configuration.setProperty(KEY_TSMUXER_PREREMUX_PCM, value);
-	}*/
 
 	public void setTsmuxerForceFps(boolean value) {
 		configuration.setProperty(KEY_TSMUXER_FORCEFPS, value);
@@ -542,19 +532,20 @@ public class PmsConfiguration {
 	public void setHostname(String value) {
 		configuration.setProperty(KEY_SERVER_HOSTNAME, value);
 	}
-	
+
 	public int getProxyServerPort() {
 		return getInt(KEY_PROXY_SERVER_PORT, DEFAULT_PROXY_SERVER_PORT);
 	}
 
 	public String getLanguage() {
 		String def = Locale.getDefault().getLanguage();
-		if (def == null)
+		if (def == null) {
 			def = "en";
+		}
 		String value = getString(KEY_LANGUAGE, def);
 		return StringUtils.isNotBlank(value) ? value.trim() : def;
 	}
-	
+
 	private int getInt(String key, int def) {
 		try {
 			return configuration.getInt(key, def);
@@ -562,7 +553,7 @@ public class PmsConfiguration {
 			return def;
 		}
 	}
-	
+
 	private boolean getBoolean(String key, boolean def) {
 		try {
 			return configuration.getBoolean(key, def);
@@ -594,7 +585,7 @@ public class PmsConfiguration {
 	public void setMaxMemoryBufferSize(int value) {
 		configuration.setProperty(KEY_MAX_MEMORY_BUFFER_SIZE, Math.max(0, Math.min(MAX_MAX_MEMORY_BUFFER_SIZE, value)));
 	}
-	
+
 	public String getMencoderAssScale() {
 		return getString(KEY_MENCODER_ASS_SCALE, "1.0");
 	}
@@ -603,7 +594,7 @@ public class PmsConfiguration {
 	public boolean isMencoderAc3Fixed() {
 		return configuration.getBoolean(KEY_MENCODER_AC3_FIXED, false);
 	}
-	
+
 	public String getMencoderAssMargin() {
 		return getString(KEY_MENCODER_ASS_MARGIN, "10");
 	}
@@ -752,7 +743,7 @@ public class PmsConfiguration {
 	}
 
 	public void setMencoderAudioSubLanguages(String value) {
-		configuration.setProperty(KEY_MENCODER_AUDIO_SUB_LANGS, value);		
+		configuration.setProperty(KEY_MENCODER_AUDIO_SUB_LANGS, value);
 	}
 
 	public String getMencoderDecode() {
@@ -776,7 +767,7 @@ public class PmsConfiguration {
 	}
 
 	public void setMencoderAss(boolean value) {
-		configuration.setProperty(KEY_MENCODER_ASS, value);		
+		configuration.setProperty(KEY_MENCODER_ASS, value);
 	}
 
 	public void setMencoderFontConfig(boolean value) {
@@ -790,39 +781,39 @@ public class PmsConfiguration {
 	public void setMencoderUsePcm(boolean value) {
 		configuration.setProperty(KEY_MENCODER_USE_PCM, value);
 	}
-	
+
 	public boolean isArchiveBrowsing() {
 		return getBoolean(KEY_OPEN_ARCHIVES, false);
 	}
-	
+
 	public void setArchiveBrowsing(boolean value) {
 		configuration.setProperty(KEY_OPEN_ARCHIVES, value);
 	}
-	
+
 	public boolean isMencoderYadif() {
 		return getBoolean(KEY_MENCODER_YADIF, false);
 	}
-	
+
 	public void setMencoderYadif(boolean value) {
 		configuration.setProperty(KEY_MENCODER_YADIF, value);
 	}
-	
+
 	public boolean isMencoderScaler() {
 		return getBoolean(KEY_MENCODER_SCALER, false);
 	}
-	
+
 	public void setMencoderScaler(boolean value) {
 		configuration.setProperty(KEY_MENCODER_SCALER, value);
 	}
-	
+
 	public int getMencoderScaleX() {
 		return getInt(KEY_MENCODER_SCALEX, 0);
 	}
-	
+
 	public void setMencoderScaleX(int value) {
 		configuration.setProperty(KEY_MENCODER_SCALEX, value);
 	}
-	
+
 	public int getMencoderScaleY() {
 		return getInt(KEY_MENCODER_SCALEY, 0);
 	}
@@ -830,11 +821,11 @@ public class PmsConfiguration {
 	public void setMencoderScaleY(int value) {
 		configuration.setProperty(KEY_MENCODER_SCALEY, value);
 	}
-	
+
 	public int getAudioChannelCount() {
 		return getInt(KEY_AUDIO_CHANNEL_COUNT, 6);
 	}
-	
+
 	public void setAudioChannelCount(int value) {
 		configuration.setProperty(KEY_AUDIO_CHANNEL_COUNT, value);
 	}
@@ -861,11 +852,12 @@ public class PmsConfiguration {
 
 	public int getNumberOfCpuCores() {
 		int nbcores = Runtime.getRuntime().availableProcessors();
-		if (nbcores < 1)
+		if (nbcores < 1) {
 			nbcores = 1;
+		}
 		return getInt(KEY_NUMBER_OF_CPU_CORES, nbcores);
 	}
-	
+
 	public void setNumberOfCpuCores(int value) {
 		configuration.setProperty(KEY_NUMBER_OF_CPU_CORES, value);
 	}
@@ -889,7 +881,7 @@ public class PmsConfiguration {
 	public boolean getUseSubtitles() {
 		return getBoolean(KEY_USE_SUBTITLES, true);
 	}
-	
+
 	public void setUseSubtitles(boolean value) {
 		configuration.setProperty(KEY_USE_SUBTITLES, value);
 	}
@@ -925,7 +917,7 @@ public class PmsConfiguration {
 	public void setAvisynthScript(String value) {
 		configuration.setProperty(KEY_AVISYNTH_SCRIPT, value);
 	}
-	
+
 	public String getCodecSpecificConfig() {
 		return getString(KEY_CODEC_SPEC_SCRIPT, "");
 	}
@@ -937,7 +929,7 @@ public class PmsConfiguration {
 	public int getMaxAudioBuffer() {
 		return getInt(KEY_MAX_AUDIO_BUFFER, 100);
 	}
-	
+
 	public int getMinStreamBuffer() {
 		return getInt(KEY_MIN_STREAM_BUFFER, 1);
 	}
@@ -950,13 +942,13 @@ public class PmsConfiguration {
 	public void setFfmpegSettings(String value) {
 		configuration.setProperty(KEY_FFMPEG_SETTINGS, value);
 	}
-	
+
 	public String getFfmpegSettings() {
 		return getString(KEY_FFMPEG_SETTINGS, "-threads 2 -g 1 -qscale 1 -qmin 2");
 	}
 
 	public boolean isMencoderNoOutOfSync() {
-		return getBoolean(KEY_MENCODER_NO_OUT_OF_SYNC, true );
+		return getBoolean(KEY_MENCODER_NO_OUT_OF_SYNC, true);
 	}
 
 	public void setMencoderNoOutOfSync(boolean value) {
@@ -970,7 +962,7 @@ public class PmsConfiguration {
 	public void setTranscodeBlocksMultipleConnections(boolean value) {
 		configuration.setProperty(KEY_TRANSCODE_BLOCKS_MULTIPLE_CONNECTIONS, value);
 	}
-	
+
 	public boolean getTrancodeKeepFirstConnections() {
 		return configuration.getBoolean(KEY_TRANSCODE_KEEP_FIRST_CONNECTION, true);
 	}
@@ -982,7 +974,7 @@ public class PmsConfiguration {
 	public String getCharsetEncoding() {
 		return getString(KEY_CHARSET_ENCODING, "850");
 	}
-	
+
 	public void setCharsetEncoding(String value) {
 		configuration.setProperty(KEY_CHARSET_ENCODING, value);
 	}
@@ -1062,7 +1054,7 @@ public class PmsConfiguration {
 		engines = hackAvs(registry, engines);
 		return engines;
 	}
-	
+
 	private static String listToString(List<String> enginesAsList) {
 		return StringUtils.join(enginesAsList, LIST_SEPARATOR);
 	}
@@ -1072,17 +1064,16 @@ public class PmsConfiguration {
 		Collections.addAll(output, StringUtils.split(input, LIST_SEPARATOR));
 		return output;
 	}
-	
 	// TODO: Get this out of here
 	private static boolean avsHackLogged = false;
-	
+
 	// TODO: Get this out of here
 	private static List<String> hackAvs(WinUtils registry, List<String> input) {
 		List<String> toBeRemoved = new ArrayList<String>();
 		for (String engineId : input) {
-			if (engineId.startsWith("avs")  && !registry.isAvis() && PMS.get().isWindows()) {
+			if (engineId.startsWith("avs") && !registry.isAvis() && PMS.get().isWindows()) {
 				if (!avsHackLogged) {
-					PMS.minimal("AviSynth is not installed. You cannot use " + engineId + " as a transcoding engine."); //$NON-NLS-1$ //$NON-NLS-2$
+					logger.info("AviSynth is not installed. You cannot use " + engineId + " as a transcoding engine."); //$NON-NLS-1$ //$NON-NLS-2$
 					avsHackLogged = true;
 				}
 				toBeRemoved.add(engineId);
@@ -1093,44 +1084,45 @@ public class PmsConfiguration {
 		output.removeAll(toBeRemoved);
 		return output;
 	}
-	
+
 	public void save() throws ConfigurationException {
 		configuration.save();
-		PMS.minimal("Configuration saved to: " + PROFILE_PATH);
+		logger.info("(X) Configuration saved to: " + PROFILE_PATH);
+		logger.info("(Y) Configuration saved to: " + PROFILE_PATH);
 	}
 
 	public String getFolders() {
 		return getString(KEY_FOLDERS, "");
 	}
-	
+
 	public void setFolders(String value) {
 		configuration.setProperty(KEY_FOLDERS, value);
-	}	
-	
+	}
+
 	public String getNetworkInterface() {
 		return getString(KEY_NETWORK_INTERFACE, "");
 	}
-	
+
 	public void setNetworkInterface(String value) {
 		configuration.setProperty(KEY_NETWORK_INTERFACE, value);
-	}	
-	
+	}
+
 	public boolean isHideEngineNames() {
-		return getBoolean(KEY_HIDE_ENGINENAMES, false );
+		return getBoolean(KEY_HIDE_ENGINENAMES, false);
 	}
 
 	public void setHideEngineNames(boolean value) {
 		configuration.setProperty(KEY_HIDE_ENGINENAMES, value);
 	}
-	
+
 	public boolean isHideExtensions() {
-		return getBoolean(KEY_HIDE_EXTENSIONS, false );
+		return getBoolean(KEY_HIDE_EXTENSIONS, false);
 	}
 
 	public void setHideExtensions(boolean value) {
 		configuration.setProperty(KEY_HIDE_EXTENSIONS, value);
 	}
-	
+
 	public String getShares() {
 		return getString(KEY_SHARES, "");
 	}
@@ -1138,7 +1130,7 @@ public class PmsConfiguration {
 	public void setShares(String value) {
 		configuration.setProperty(KEY_SHARES, value);
 	}
-	
+
 	public String getNoTranscode() {
 		return getString(KEY_NOTRANSCODE, "");
 	}
@@ -1146,7 +1138,7 @@ public class PmsConfiguration {
 	public void setNoTranscode(String value) {
 		configuration.setProperty(KEY_NOTRANSCODE, value);
 	}
-	
+
 	public String getForceTranscode() {
 		return getString(KEY_FORCETRANSCODE, "");
 	}
@@ -1163,7 +1155,7 @@ public class PmsConfiguration {
 		boolean isMultiCore = getNumberOfCpuCores() > 1;
 		return getBoolean(KEY_MENCODER_MT, isMultiCore);
 	}
-	
+
 	public void setRemuxAC3(boolean value) {
 		configuration.setProperty(KEY_MENCODER_REMUX_AC3, value);
 	}
@@ -1171,7 +1163,7 @@ public class PmsConfiguration {
 	public boolean isRemuxAC3() {
 		return getBoolean(KEY_MENCODER_REMUX_AC3, true);
 	}
-	
+
 	public void setMencoderRemuxMPEG2(boolean value) {
 		configuration.setProperty(KEY_MENCODER_REMUX_MPEG2, value);
 	}
@@ -1179,7 +1171,7 @@ public class PmsConfiguration {
 	public boolean isMencoderRemuxMPEG2() {
 		return getBoolean(KEY_MENCODER_REMUX_MPEG2, true);
 	}
-	
+
 	public void setDisableFakeSize(boolean value) {
 		configuration.setProperty(KEY_DISABLE_FAKESIZE, value);
 	}
@@ -1187,7 +1179,7 @@ public class PmsConfiguration {
 	public boolean isDisableFakeSize() {
 		return getBoolean(KEY_DISABLE_FAKESIZE, false);
 	}
-	
+
 	public void setMencoderAssDefaultStyle(boolean value) {
 		configuration.setProperty(KEY_MENCODER_ASS_DEFAULTSTYLE, value);
 	}
@@ -1195,31 +1187,31 @@ public class PmsConfiguration {
 	public boolean isMencoderAssDefaultStyle() {
 		return getBoolean(KEY_MENCODER_ASS_DEFAULTSTYLE, false);
 	}
-	
+
 	public int getMEncoderOverscan() {
 		return getInt(KEY_OVERSCAN, 0);
 	}
-	
+
 	public void setMEncoderOverscan(int value) {
 		configuration.setProperty(KEY_OVERSCAN, value);
 	}
-	
+
 	public int getSortMethod() {
 		return getInt(KEY_SORT_METHOD, 0);
 	}
-	
+
 	public void setSortMethod(int value) {
 		configuration.setProperty(KEY_SORT_METHOD, value);
 	}
-	
+
 	public int getAudioThumbnailMethod() {
 		return getInt(KEY_AUDIO_THUMBNAILS_METHOD, 0);
 	}
-	
+
 	public void setAudioThumbnailMethod(int value) {
 		configuration.setProperty(KEY_AUDIO_THUMBNAILS_METHOD, value);
 	}
-	
+
 	public String getAlternateThumbFolder() {
 		return getString(KEY_ALTERNATE_THUMB_FOLDER, "");
 	}
@@ -1227,7 +1219,7 @@ public class PmsConfiguration {
 	public void setAlternateThumbFolder(String value) {
 		configuration.setProperty(KEY_ALTERNATE_THUMB_FOLDER, value);
 	}
-	
+
 	public String getAlternateSubsFolder() {
 		return getString(KEY_ALTERNATE_SUBS_FOLDER, "");
 	}
@@ -1235,7 +1227,7 @@ public class PmsConfiguration {
 	public void setAlternateSubsFolder(String value) {
 		configuration.setProperty(KEY_ALTERNATE_SUBS_FOLDER, value);
 	}
-	
+
 	public void setDTSEmbedInPCM(boolean value) {
 		configuration.setProperty(KEY_EMBED_DTS_IN_PCM, value);
 	}
@@ -1243,7 +1235,7 @@ public class PmsConfiguration {
 	public boolean isDTSEmbedInPCM() {
 		return getBoolean(KEY_EMBED_DTS_IN_PCM, false);
 	}
-	
+
 	public void setMencoderMuxWhenCompatible(boolean value) {
 		configuration.setProperty(KEY_MENCODER_MUX_COMPATIBLE, value);
 	}
@@ -1251,7 +1243,7 @@ public class PmsConfiguration {
 	public boolean isMencoderMuxWhenCompatible() {
 		return getBoolean(KEY_MENCODER_MUX_COMPATIBLE, true);
 	}
-	
+
 	public void setMuxAllAudioTracks(boolean value) {
 		configuration.setProperty(KEY_MUX_ALLAUDIOTRACKS, value);
 	}
@@ -1259,7 +1251,7 @@ public class PmsConfiguration {
 	public boolean isMuxAllAudioTracks() {
 		return getBoolean(KEY_MUX_ALLAUDIOTRACKS, false);
 	}
-	
+
 	public void setUseMplayerForVideoThumbs(boolean value) {
 		configuration.setProperty(KEY_USE_MPLAYER_FOR_THUMBS, value);
 	}
@@ -1268,14 +1260,14 @@ public class PmsConfiguration {
 		return getBoolean(KEY_USE_MPLAYER_FOR_THUMBS, false);
 	}
 
-	public String getIpFilter(){
+	public String getIpFilter() {
 		return getString(KEY_IP_FILTER, "");
 	}
 
-	public void setIpFilter(String value){
+	public void setIpFilter(String value) {
 		configuration.setProperty(KEY_IP_FILTER, value);
 	}
-	
+
 	public void setPreventsSleep(boolean value) {
 		configuration.setProperty(KEY_PREVENTS_SLEEP, value);
 	}
@@ -1283,7 +1275,7 @@ public class PmsConfiguration {
 	public boolean isPreventsSleep() {
 		return getBoolean(KEY_PREVENTS_SLEEP, false);
 	}
-	
+
 	public void setHTTPEngineV2(boolean value) {
 		configuration.setProperty(KEY_HTTP_ENGINE_V2, value);
 	}
@@ -1293,33 +1285,33 @@ public class PmsConfiguration {
 	}
 
 	public boolean getIphotoEnabled() {
- 		return getBoolean(KEY_IPHOTO_ENABLED, false);
- 	}
- 
- 	public void setIphotoEnabled(boolean value) {
- 		configuration.setProperty(KEY_IPHOTO_ENABLED, value);
- 	}
- 
- 	public boolean getItunesEnabled() {
- 		return getBoolean(KEY_ITUNES_ENABLED, false);
- 	}
- 
- 	public void setItunesEnabled(boolean value) {
- 		configuration.setProperty(KEY_ITUNES_ENABLED, value);
- 	}
- 	
- 	public boolean isHideEmptyFolders() {
+		return getBoolean(KEY_IPHOTO_ENABLED, false);
+	}
+
+	public void setIphotoEnabled(boolean value) {
+		configuration.setProperty(KEY_IPHOTO_ENABLED, value);
+	}
+
+	public boolean getItunesEnabled() {
+		return getBoolean(KEY_ITUNES_ENABLED, false);
+	}
+
+	public void setItunesEnabled(boolean value) {
+		configuration.setProperty(KEY_ITUNES_ENABLED, value);
+	}
+
+	public boolean isHideEmptyFolders() {
 		return getBoolean(PmsConfiguration.KEY_HIDE_EMPTY_FOLDERS, false);
 	}
-	
+
 	public void setHideEmptyFolders(final boolean value) {
 		this.configuration.setProperty(PmsConfiguration.KEY_HIDE_EMPTY_FOLDERS, value);
 	}
-	
+
 	public boolean isHideMediaLibraryFolder() {
 		return getBoolean(PmsConfiguration.KEY_HIDE_MEDIA_LIBRARY_FOLDER, false);
 	}
-	
+
 	public void setHideMediaLibraryFolder(final boolean value) {
 		this.configuration.setProperty(PmsConfiguration.KEY_HIDE_MEDIA_LIBRARY_FOLDER, value);
 	}
@@ -1327,31 +1319,31 @@ public class PmsConfiguration {
 	public boolean getHideTranscodeEnabled() {
 		return getBoolean(KEY_HIDE_TRANSCODE_FOLDER, false);
 	}
-	
+
 	public void setHideTranscodeEnabled(boolean value) {
 		configuration.setProperty(KEY_HIDE_TRANSCODE_FOLDER, value);
 	}
-	
+
 	public boolean isDvdIsoThumbnails() {
 		return getBoolean(KEY_DVDISO_THUMBNAILS, false);
 	}
-	
+
 	public void setDvdIsoThumbnails(boolean value) {
 		configuration.setProperty(KEY_DVDISO_THUMBNAILS, value);
 	}
-	
+
 	public Object getCustomProperty(String property) {
 		return configuration.getProperty(property);
 	}
-	
+
 	public void setCustomProperty(String property, Object value) {
 		configuration.setProperty(property, value);
 	}
-	
+
 	public boolean isChapterSupport() {
 		return getBoolean(KEY_CHAPTER_SUPPORT, false);
 	}
-	
+
 	public void setChapterSupport(boolean value) {
 		configuration.setProperty(KEY_CHAPTER_SUPPORT, value);
 	}
@@ -1359,42 +1351,43 @@ public class PmsConfiguration {
 	public int getChapterInterval() {
 		return getInt(KEY_CHAPTER_INTERVAL, 5);
 	}
-	
+
 	public void setChapterInterval(int value) {
 		configuration.setProperty(KEY_CHAPTER_INTERVAL, value);
 	}
-	
+
 	public int getSubsColor() {
-		 if (!GraphicsEnvironment.isHeadless())
-			 return getInt(KEY_SUBS_COLOR, Color.WHITE.getRGB());
-		 else
-			 return 0xffffff; 
+		if (!GraphicsEnvironment.isHeadless()) {
+			return getInt(KEY_SUBS_COLOR, Color.WHITE.getRGB());
+		} else {
+			return 0xffffff;
+		}
 	}
-	
+
 	public void setSubsColor(int value) {
 		configuration.setProperty(KEY_SUBS_COLOR, value);
 	}
-	
+
 	public boolean isFix25FPSAvMismatch() {
 		return getBoolean(KEY_FIX_25FPS_AV_MISMATCH, false);
 	}
-	
+
 	public void setFix25FPSAvMismatch(boolean value) {
 		configuration.setProperty(KEY_FIX_25FPS_AV_MISMATCH, value);
 	}
-	
+
 	public int getVideoTranscodeStartDelay() {
 		return getInt(KEY_VIDEOTRANSCODE_START_DELAY, 6);
 	}
-	
+
 	public void setVideoTranscodeStartDelay(int value) {
 		configuration.setProperty(KEY_VIDEOTRANSCODE_START_DELAY, value);
 	}
-	
+
 	public boolean isAudioResample() {
 		return getBoolean(KEY_AUDIO_RESAMPLE, true);
 	}
-	
+
 	public void setAudioResample(boolean value) {
 		configuration.setProperty(KEY_AUDIO_RESAMPLE, value);
 	}
@@ -1424,7 +1417,7 @@ public class PmsConfiguration {
 			try {
 				HOSTNAME = InetAddress.getLocalHost().getHostName();
 			} catch (UnknownHostException e) {
-				PMS.minimal("Can't determine hostname");
+				logger.info("Can't determine hostname");
 				HOSTNAME = "unknown host";
 			}
 		}

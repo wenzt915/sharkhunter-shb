@@ -18,105 +18,139 @@
  */
 package net.pms.newgui;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.FileInputStream;
+import java.awt.event.MouseListener;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 
+import javax.imageio.ImageIO;
 import javax.swing.JComponent;
-import javax.swing.JPopupMenu;
+import javax.swing.JLabel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
+
+import net.pms.Messages;
+import net.pms.PMS;
+import net.pms.util.PMSUtil;
 
 import com.jgoodies.forms.builder.PanelBuilder;
 import com.jgoodies.forms.layout.CellConstraints;
 import com.jgoodies.forms.layout.FormLayout;
 
 public class AboutTab {
+	private ImagePanel imagePanel;
+	private JLabel jl;
+	private JProgressBar jpb;
 
-	
-	class PopupTriggerMouseListener extends MouseAdapter
-    {
-        private JPopupMenu popup;
-        private JComponent component;
+	public JProgressBar getJpb() {
+		return jpb;
+	}
 
-        public PopupTriggerMouseListener(JPopupMenu popup, JComponent component)
-        {
-            this.popup = popup;
-            this.component = component;
-        }
+	public JLabel getJl() {
+		return jl;
+	}
 
-        //some systems trigger popup on mouse press, others on mouse release, we want to cater for both
-        private void showMenuIfPopupTrigger(MouseEvent e)
-        {
-            if (e.isPopupTrigger())
-            {
-               popup.show(component, e.getX() + 3, e.getY() + 3);
-            }
-        }
-
-        //according to the javadocs on isPopupTrigger, checking for popup trigger on mousePressed and mouseReleased 
-        //should be all  that is required
-        //public void mouseClicked(MouseEvent e)  
-        //{
-        //    showMenuIfPopupTrigger(e);
-        //}
-
-        public void mousePressed(MouseEvent e)
-        {
-            showMenuIfPopupTrigger(e);
-        }
-
-        public void mouseReleased(MouseEvent e)
-        {
-            showMenuIfPopupTrigger(e);
-        }
-
-    }
-	private JTextArea jList;
-	
-	public JTextArea getList() {
-		return jList;
+	public ImagePanel getImagePanel() {
+		return imagePanel;
 	}
 
 	public JComponent build() {
 		FormLayout layout = new FormLayout(
-                "left:pref, 0:grow", //$NON-NLS-1$
-                "pref, fill:default:grow"); //$NON-NLS-1$
-         PanelBuilder builder = new PanelBuilder(layout);
-      //  builder.setBorder(Borders.DLU14_BORDER);
-        builder.setOpaque(true);
+			"0:grow, pref, 0:grow", //$NON-NLS-1$
+			"pref, 3dlu, pref, 12dlu, pref, 3dlu, pref, 3dlu, p, 3dlu, p, 3dlu, p"); //$NON-NLS-1$
 
-        CellConstraints cc = new CellConstraints();
-        
-        jList = new JTextArea();
-		jList.setEditable(false);
-		jList.setWrapStyleWord(false);
-		jList.setBackground(Color.WHITE);
-		//jList.setFont(new Font("Courier New", Font.PLAIN, 12)); //$NON-NLS-1$
-		FileInputStream fIN;
-		try {
-			fIN = new FileInputStream("README"); //$NON-NLS-1$
-			byte buf [] = new byte [fIN.available()];
-			fIN.read(buf);
-			fIN.close();
-			jList.setText(new String(buf));
-		} catch (IOException e) {
-			
-		}
-		
-       
-        JScrollPane pane = new JScrollPane(jList, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        pane.setPreferredSize(new Dimension(500,400));
-      //  pane.setBorder(BorderFactory.createEtchedBorder());
-        
-       builder.add(pane,          cc.xy(2,  2));
-       
-       
-        return builder.getPanel();
+		PanelBuilder builder = new PanelBuilder(layout);
+		builder.setDefaultDialogBorder();
+		builder.setOpaque(true);
+		CellConstraints cc = new CellConstraints();
+
+		final LinkMouseListener pms3Link = new LinkMouseListener("PS3 Media Server " + PMS.VERSION,
+			"http://www.ps3mediaserver.org/");
+		builder.addLabel(pms3Link.getLabel(), cc.xy(2, 1, "center, fill")).addMouseListener(pms3Link);
+
+		imagePanel = buildImagePanel();
+		builder.add(imagePanel, cc.xy(2, 3, "center, fill"));
+
+
+		builder.addLabel(Messages.getString("LinksTab.5"), cc.xy(2, 5, "center, fill")); //$NON-NLS-1$ //$NON-NLS-2$
+
+		final LinkMouseListener tsMuxerLink = new LinkMouseListener("tsMuxeR (c) Smartlabs",
+			"http://www.smlabs.net/en/products/tsmuxer/");
+		builder.addLabel(tsMuxerLink.getLabel(),
+			cc.xy(2, 7, "center, fill")).addMouseListener(tsMuxerLink);
+
+		final LinkMouseListener ffmpegLink = new LinkMouseListener("FFmpeg",
+			"http://ffmpeg.mplayerhq.hu");
+		builder.addLabel(ffmpegLink.getLabel(),
+			cc.xy(2, 9, "center, fill")).addMouseListener(ffmpegLink);
+
+		final LinkMouseListener mplayerLink = new LinkMouseListener("MPlayer",
+			"http://www.mplayerhq.hu");
+		builder.addLabel(mplayerLink.getLabel(),
+			cc.xy(2, 11, "center, fill")).addMouseListener(mplayerLink);
+
+		final LinkMouseListener mplayerSherpiaBuildsLink = new LinkMouseListener("MPlayer's Sherpya Builds",
+			"http://oss.netfarm.it/mplayer-win32.php");
+		builder.addLabel(mplayerSherpiaBuildsLink.getLabel(),
+			cc.xy(2, 13, "center, fill")).addMouseListener(mplayerSherpiaBuildsLink);
+
+		JScrollPane scrollPane = new JScrollPane(builder.getPanel());
+		scrollPane.setBorder(null);
+		return scrollPane;
 	}
-	
-	
+
+	private static class LinkMouseListener implements MouseListener {
+		private String name;
+		private String link;
+
+		public LinkMouseListener(String n, String l) {
+			name = n;
+			link = l;
+		}
+
+		public String getLabel() {
+			final StringBuffer sb = new StringBuffer();
+			sb.append("<html>");
+			sb.append("<a href=\"");
+			sb.append(link);
+			sb.append("\">");
+			sb.append(name);
+			sb.append("</a>");
+			sb.append("</html>");
+			return sb.toString();
+		}
+
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			try {
+				PMSUtil.browseURI(link); //$NON-NLS-1$
+			} catch (Exception e1) {
+			}
+		}
+
+		@Override
+		public void mouseEntered(MouseEvent e) {
+		}
+
+		@Override
+		public void mouseExited(MouseEvent e) {
+		}
+
+		@Override
+		public void mousePressed(MouseEvent e) {
+		}
+
+		@Override
+		public void mouseReleased(MouseEvent e) {
+		}
+	}
+
+	public ImagePanel buildImagePanel() {
+		BufferedImage bi = null;
+		try {
+			bi = ImageIO.read(LooksFrame.class.getResourceAsStream("/resources/images/logo.png")); //$NON-NLS-1$
+		} catch (IOException e) {
+		}
+		return new ImagePanel(bi);
+	}
 }

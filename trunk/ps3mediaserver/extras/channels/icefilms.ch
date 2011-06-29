@@ -177,7 +177,7 @@ macrodef movieMacro {
 channel IceFilms {
    img=http://img.icefilms.info/logo.png
    subscript=iceSubs
-   hdr=Referer=http:/www.icefilms.info
+   hdr=Referer=http:/www.icefilms.info/index
   login {
 		# Login data
 		url=http://www.megaupload.com/?c=

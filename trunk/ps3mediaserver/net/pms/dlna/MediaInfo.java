@@ -31,7 +31,8 @@ import static java.util.Collections.singletonMap;
 
 import java.lang.reflect.Method;
 
-import net.pms.PMS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sun.jna.FunctionMapper;
 import com.sun.jna.Library;
@@ -42,6 +43,7 @@ import com.sun.jna.Pointer;
 import com.sun.jna.WString;
 
 public class MediaInfo {
+	private static final Logger logger = LoggerFactory.getLogger(MediaInfo.class);
 	static String libraryName;
 
 	static {
@@ -58,8 +60,7 @@ public class MediaInfo {
 				// If we do not, the system will look for dependencies, but only in the library path.
 				NativeLibrary.getInstance("zen");
 			} catch (LinkageError e) {
-				// FIXME: should be a warning
-				PMS.minimal("Error loading libzen: " + e.getMessage());
+				logger.warn("Error loading libzen: " + e.getMessage());
 			}
 		}
 	}
@@ -70,32 +71,36 @@ public class MediaInfo {
 			libraryName,
 			MediaInfoDLL_Internal.class,
 			singletonMap(OPTION_FUNCTION_MAPPER, new FunctionMapper() {
-				@Override
-				public String getFunctionName(NativeLibrary lib, Method method) {
-					// e.g. MediaInfo_New(), MediaInfo_Open() ...
-					return "MediaInfo_" + method.getName();
-				}
-			})
-		);
+
+			@Override
+			public String getFunctionName(NativeLibrary lib, Method method) {
+				// e.g. MediaInfo_New(), MediaInfo_Open() ...
+				return "MediaInfo_" + method.getName();
+			}
+		}));
 
 		// Constructor/Destructor
 		Pointer New();
+
 		void Delete(Pointer Handle);
 
 		// File
 		int Open(Pointer Handle, WString file);
+
 		void Close(Pointer Handle);
 
 		// Info
 		WString Inform(Pointer Handle);
+
 		WString Get(Pointer Handle, int StreamKind, int StreamNumber, WString parameter, int infoKind, int searchKind);
+
 		WString GetI(Pointer Handle, int StreamKind, int StreamNumber, int parameterIndex, int infoKind);
+
 		int Count_Get(Pointer Handle, int StreamKind, int StreamNumber);
 
 		// Options
 		WString Option(Pointer Handle, WString option, WString value);
 	}
-
 	private Pointer Handle;
 
 	public enum StreamKind {
@@ -114,40 +119,32 @@ public class MediaInfo {
 		 * Unique name of parameter.
 		 */
 		Name,
-
 		/**
 		 * Value of parameter.
 		 */
 		Text,
-
 		/**
 		 * Unique name of measure unit of parameter.
 		 */
 		Measure,
-
 		Options,
-
 		/**
 		 * Translated name of parameter.
 		 */
 		Name_Text,
-
 		/**
 		 * Translated name of measure unit.
 		 */
 		Measure_Text,
-
 		/**
 		 * More information about the parameter.
 		 */
 		Info,
-
 		/**
 		 * How this parameter is supported, could be N (No), B (Beta), R (Read only), W
 		 * (Read/Write).
 		 */
 		HowTo,
-
 		/**
 		 * Domain of this piece of information.
 		 */
@@ -157,16 +154,17 @@ public class MediaInfo {
 	// Constructor/Destructor
 	public MediaInfo() {
 		try {
-			PMS.minimal("Loading MediaInfo library");
+			logger.info("Loading MediaInfo library");
 			Handle = MediaInfoDLL_Internal.INSTANCE.New();
-			PMS.minimal("Loaded " + Option_Static("Info_Version"));
+			logger.info("Loaded " + Option_Static("Info_Version"));
 		} catch (Throwable e) {
-			if (e != null)
-				PMS.minimal("Error loading MediaInfo library: " + e.getMessage());
-			if (!Platform.isWindows() && !Platform.isMac()) {
-				PMS.minimal("Make sure you have libmediainfo and libzen installed");
+			if (e != null) {
+				logger.info("Error loading MediaInfo library: " + e.getMessage());
 			}
-			PMS.minimal("The server will now use the less accurate ffmpeg parsing method");
+			if (!Platform.isWindows() && !Platform.isMac()) {
+				logger.info("Make sure you have libmediainfo and libzen installed");
+			}
+			logger.info("The server will now use the less accurate ffmpeg parsing method");
 		}
 	}
 
@@ -175,8 +173,9 @@ public class MediaInfo {
 	}
 
 	public void dispose() {
-		if (Handle == null)
+		if (Handle == null) {
 			throw new IllegalStateException();
+		}
 
 		MediaInfoDLL_Internal.INSTANCE.Delete(Handle);
 		Handle = null;
@@ -184,8 +183,9 @@ public class MediaInfo {
 
 	@Override
 	protected void finalize() throws Throwable {
-		if (Handle != null)
+		if (Handle != null) {
 			dispose();
+		}
 	}
 
 	// File
@@ -264,8 +264,7 @@ public class MediaInfo {
 			StreamNumber,
 			new WString(parameter),
 			infoKind.ordinal(),
-			searchKind.ordinal()
-		).toString();
+			searchKind.ordinal()).toString();
 	}
 
 	/**
@@ -298,8 +297,7 @@ public class MediaInfo {
 			StreamKind.ordinal(),
 			StreamNumber,
 			parameterIndex,
-			infoKind.ordinal()
-		).toString();
+			infoKind.ordinal()).toString();
 	}
 
 	/**
@@ -357,8 +355,7 @@ public class MediaInfo {
 		return MediaInfoDLL_Internal.INSTANCE.Option(
 			MediaInfoDLL_Internal.INSTANCE.New(),
 			new WString(Option),
-			new WString("")
-		).toString();
+			new WString("")).toString();
 	}
 
 	/**
@@ -372,7 +369,6 @@ public class MediaInfo {
 		return MediaInfoDLL_Internal.INSTANCE.Option(
 			MediaInfoDLL_Internal.INSTANCE.New(),
 			new WString(Option),
-			new WString(Value)
-		).toString();
+			new WString(Value)).toString();
 	}
 }

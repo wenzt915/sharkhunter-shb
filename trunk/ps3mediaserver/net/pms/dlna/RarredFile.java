@@ -26,31 +26,33 @@ import java.util.List;
 
 import net.pms.PMS;
 
-
 import de.innosystec.unrar.Archive;
 import de.innosystec.unrar.exception.RarException;
 import de.innosystec.unrar.rarfile.FileHeader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class RarredFile extends DLNAResource {
-	
+	private static final Logger logger = LoggerFactory.getLogger(RarredFile.class);
 	private File f;
 	private Archive rarFile;
-	
+
 	public RarredFile(File f) {
 		this.f = f;
 		lastmodified = f.lastModified();
 		try {
 			rarFile = new Archive(f);
 			List<FileHeader> headers = rarFile.getFileHeaders();
-			for(FileHeader fh:headers) {
+			for (FileHeader fh : headers) {
 				//if (fh.getFullUnpackSize() < MAX_ARCHIVE_ENTRY_SIZE && fh.getFullPackSize() < MAX_ARCHIVE_ENTRY_SIZE)
 				addChild(new RarredEntry(fh.getFileNameString(), f, fh.getFileNameString(), fh.getFullUnpackSize()));
 			}
 			rarFile.close();
 		} catch (RarException e) {
-			PMS.error(null, e);
+			logger.error(null, e);
 		} catch (IOException e) {
-			PMS.error(null, e);
+			logger.error(null, e);
 		}
 	}
 
@@ -69,6 +71,7 @@ public class RarredFile extends DLNAResource {
 	public boolean isFolder() {
 		return true;
 	}
+
 	public long lastModified() {
 		return 0;
 	}
@@ -83,8 +86,8 @@ public class RarredFile extends DLNAResource {
 		boolean t = false;
 		try {
 			t = f.exists() && !rarFile.isEncrypted();
-		} catch (Throwable th) {}
+		} catch (Throwable th) {
+		}
 		return t;
 	}
-
 }

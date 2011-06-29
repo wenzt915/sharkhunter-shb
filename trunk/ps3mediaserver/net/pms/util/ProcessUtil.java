@@ -3,15 +3,18 @@ package net.pms.util;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
-import com.sun.jna.Platform;
-
 import net.pms.PMS;
 import net.pms.io.Gob;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.jna.Platform;
+
 // see https://code.google.com/p/ps3mediaserver/issues/detail?id=680
 // for background/issues/discussion related to this class
-
 public class ProcessUtil {
+	private static final Logger logger = LoggerFactory.getLogger(ProcessUtil.class);
 	// how long to wait in milliseconds until a kill -TERM on Unix has been deemed to fail
 	private static final int TERM_TIMEOUT = 10000;
 	// how long to wait in milliseconds until a kill -ALRM on Unix has been deemed to fail
@@ -41,7 +44,7 @@ public class ProcessUtil {
 				f.setAccessible(true);
 				pid = f.getInt(p);
 			} catch (Throwable e) {
-				PMS.info("Can't determine the Unix process ID: " + e.getMessage());
+				logger.debug("Can't determine the Unix process ID: " + e.getMessage());
 			}
 		}
 
@@ -70,19 +73,17 @@ public class ProcessUtil {
 	 *
 	 *     The Java 6 API clearly states that failure to promptly
 	 *     “read the output stream of the subprocess may cause the subprocess
-	 *     to block, and even deadlock.”
+	 *     to block, and even deadlock.�?
 	 *
 	 * This is corroborated by the fact that destroy() works fine if the
 	 * process is allowed to run to completion:
 	 *
 	 *     https://code.google.com/p/ps3mediaserver/issues/detail?id=680#c11
 	 */
-
 	// send a Unix process the specified signal
 	public static boolean kill(Integer pid, int signal) {
 		boolean killed = false;
-		// FIXME: this should really be a warning
-		PMS.info("Sending kill -" + signal + " to the Unix process: " + pid);
+		logger.warn("Sending kill -" + signal + " to the Unix process: " + pid);
 		try {
 			Process process = Runtime.getRuntime().exec("kill -" + signal + " " + pid);
 			// "Gob": a cryptic name for (e.g.) StreamGobbler - i.e. a stream
@@ -92,10 +93,10 @@ public class ProcessUtil {
 			int exit = waitFor(process);
 			if (exit == 0) {
 				killed = true;
-				PMS.info("Successfully sent kill -" + signal + " to the Unix process: " + pid);
+				logger.debug("Successfully sent kill -" + signal + " to the Unix process: " + pid);
 			}
 		} catch (IOException e) {
-			PMS.error("Error calling: kill -" + signal + " " + pid, e);
+			logger.error("Error calling: kill -" + signal + " " + pid, e);
 		}
 
 		return killed;
@@ -107,12 +108,13 @@ public class ProcessUtil {
 			final Integer pid = getProcessID(p);
 
 			if (pid != null) { // Unix only
-				PMS.debug("Killing the Unix process: " + pid);
+				logger.trace("Killing the Unix process: " + pid);
 				Runnable r = new Runnable() {
 					public void run() {
 						try {
 							Thread.sleep(TERM_TIMEOUT);
-						} catch (InterruptedException e) {}
+						} catch (InterruptedException e) {
+						}
 
 						try {
 							p.exitValue();
@@ -123,7 +125,8 @@ public class ProcessUtil {
 								try {
 									// This is a last resort, so let's not be too eager
 									Thread.sleep(ALRM_TIMEOUT);
-								} catch (InterruptedException ie) {}
+								} catch (InterruptedException ie) {
+								}
 
 								kill(pid, 9);
 							}

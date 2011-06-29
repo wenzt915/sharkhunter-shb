@@ -23,30 +23,31 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import net.pms.PMS;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // "Gob": a cryptic name for (e.g.) StreamGobbler - i.e. a stream
 // consumer that reads and discards the stream
 public class Gob extends Thread {
-	
+	private static final Logger logger = LoggerFactory.getLogger(Gob.class);
 	BufferedReader in;
+
 	public Gob(InputStream in) {
 		this.in = new BufferedReader(new InputStreamReader(in));
 	}
-	
-	public void run () {
+
+	public void run() {
 		String line = null;
 		try {
-			while ((line=in.readLine()) != null) {
-				if (!line.startsWith("100"))
-					PMS.debug(line);
+			while ((line = in.readLine()) != null) {
+				if (!line.startsWith("100")) {
+					logger.trace(line);
+				}
 			}
 			in.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-	}
 
+	}
 }

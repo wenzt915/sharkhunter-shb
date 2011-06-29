@@ -28,14 +28,19 @@ import net.pms.PMS;
 import net.pms.encoders.AviDemuxerInputStream;
 import net.pms.util.ProcessUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
-	
+	private static final Logger logger = LoggerFactory.getLogger(ProcessWrapperImpl.class);
+
 	@Override
 	public String toString() {
 		return super.getName();
 	}
 
 	private boolean success;
+
 	public boolean isSuccess() {
 		return success;
 	}
@@ -46,31 +51,33 @@ public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
 	private OutputConsumer stderrConsumer;
 	private OutputParams params;
 	private boolean destroyed;
-	private String [] cmdArray;
+	private String[] cmdArray;
 	private boolean nullable;
 	private ArrayList<ProcessWrapper> attachedProcesses;
 	private BufferedOutputFile bo = null;
 	private boolean keepStdout;
 	private boolean keepStderr;
-	
-	public ProcessWrapperImpl(String cmdArray [], OutputParams params) {
+
+	public ProcessWrapperImpl(String cmdArray[], OutputParams params) {
 		this(cmdArray, params, false, false);
 	}
 
-	public ProcessWrapperImpl(String cmdArray [], OutputParams params, boolean keepOutput) {
+	public ProcessWrapperImpl(String cmdArray[], OutputParams params, boolean keepOutput) {
 		this(cmdArray, params, keepOutput, keepOutput);
 	}
 
-	public ProcessWrapperImpl(String cmdArray [], OutputParams params, boolean keepStdout, boolean keepStderr) {
+	public ProcessWrapperImpl(String cmdArray[], OutputParams params, boolean keepStdout, boolean keepStderr) {
 		super(cmdArray[0]);
 		File exec = new File(cmdArray[0]);
-		if (exec.exists() && exec.isFile())
+		if (exec.exists() && exec.isFile()) {
 			cmdArray[0] = exec.getAbsolutePath();
+		}
 		this.cmdArray = cmdArray;
-		StringBuffer sb = new StringBuffer("");
-		for(int i=0;i<cmdArray.length;i++) {
-			if (i>0)
+		StringBuilder sb = new StringBuilder("");
+		for (int i = 0; i < cmdArray.length; i++) {
+			if (i > 0) {
 				sb.append(" ");
+			}
 			sb.append(cmdArray[i]);
 		}
 		cmdLine = sb.toString();
@@ -79,7 +86,7 @@ public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
 		this.keepStderr = keepStderr;
 		attachedProcesses = new ArrayList<ProcessWrapper>();
 	}
-	
+
 	public void attachProcess(ProcessWrapper process) {
 		attachedProcesses.add(process);
 	}
@@ -87,39 +94,39 @@ public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
 	public void run() {
 		ProcessBuilder pb = new ProcessBuilder(cmdArray);
 		try {
-			PMS.info("Starting " + cmdLine);
-			if (params.outputFile != null && params.outputFile.getParentFile().isDirectory())
+			logger.debug("Starting " + cmdLine);
+			if (params.outputFile != null && params.outputFile.getParentFile().isDirectory()) {
 				pb.directory(params.outputFile.getParentFile());
-			if (params.workDir != null && params.workDir.isDirectory())
+			}
+			if (params.workDir != null && params.workDir.isDirectory()) {
 				pb.directory(params.workDir);
+			}
 			process = pb.start();
-			//process = Runtime.getRuntime().exec(cmdArray);
 			PMS.get().currentProcesses.add(process);
-			stderrConsumer = keepStderr ?
-				new OutputTextConsumer(process.getErrorStream(), true) :
-				new OutputTextLogger(process.getErrorStream());
+			stderrConsumer = keepStderr
+				? new OutputTextConsumer(process.getErrorStream(), true)
+				: new OutputTextLogger(process.getErrorStream());
 			stderrConsumer.start();
 			outConsumer = null;
 			if (params.outputFile != null) {
-				PMS.info("Writing in " + params.outputFile.getAbsolutePath());
-				outConsumer = keepStdout ?
-					new OutputTextConsumer(process.getInputStream(), false) :
-					new OutputTextLogger(process.getInputStream());
+				logger.debug("Writing in " + params.outputFile.getAbsolutePath());
+				outConsumer = keepStdout
+					? new OutputTextConsumer(process.getInputStream(), false)
+					: new OutputTextLogger(process.getInputStream());
 			} else if (params.input_pipes[0] != null) {
-				PMS.info("Reading pipe: " + params.input_pipes[0].getInputPipe());
-				//Thread.sleep(150);
+				logger.debug("Reading pipe: " + params.input_pipes[0].getInputPipe());
 				bo = params.input_pipes[0].getDirectBuffer();
 				if (bo == null || params.losslessaudio || params.lossyaudio || params.no_videoencode) {
 					InputStream is = params.input_pipes[0].getInputStream();
-					outConsumer = new OutputBufferConsumer((params.avidemux)?new AviDemuxerInputStream(is, params, attachedProcesses):is, params);
+					outConsumer = new OutputBufferConsumer((params.avidemux) ? new AviDemuxerInputStream(is, params, attachedProcesses) : is, params);
 					bo = (BufferedOutputFile) outConsumer.getBuffer();
 				}
 				bo.attachThread(this);
 				new OutputTextLogger(process.getInputStream()).start();
 			} else if (params.log) {
-				outConsumer = keepStdout ?
-					new OutputTextConsumer(process.getInputStream(), true) :
-					new OutputTextLogger(process.getInputStream());
+				outConsumer = keepStdout
+					? new OutputTextConsumer(process.getInputStream(), true)
+					: new OutputTextLogger(process.getInputStream());
 			} else {
 				outConsumer = new OutputBufferConsumer(process.getInputStream(), params);
 				bo = (BufferedOutputFile) outConsumer.getBuffer();
@@ -128,77 +135,86 @@ public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
 			if (params.stdin != null) {
 				params.stdin.push(process.getOutputStream());
 			}
-			if (outConsumer != null) 
+			if (outConsumer != null) {
 				outConsumer.start();
+			}
 
 			Integer pid = ProcessUtil.getProcessID(process);
 
-			if (pid != null)
-				PMS.info("Unix process ID (" + cmdArray[0] + "): " + pid);
+			if (pid != null) {
+				logger.debug("Unix process ID (" + cmdArray[0] + "): " + pid);
+			}
 
 			ProcessUtil.waitFor(process);
 
 			try {
-				if (outConsumer != null) 
+				if (outConsumer != null) {
 					outConsumer.join(1000);
-			} catch (InterruptedException e) {}
-			if (bo != null)
+				}
+			} catch (InterruptedException e) {
+			}
+			if (bo != null) {
 				bo.close();
+			}
 		} catch (Exception e) {
-			PMS.error("Fatal error in process initialization: ", e);
+			logger.error("Fatal error in process initialization: ", e);
 			stopProcess();
 		} finally {
 			if (!destroyed && !params.noexitcheck) {
 				try {
 					success = true;
 					if (process != null && process.exitValue() != 0) {
-						PMS.minimal("Process " + cmdArray[0] + " has a return code of " + process.exitValue() + "! Maybe an error occurred... check the log file");
+						logger.info("Process " + cmdArray[0] + " has a return code of " + process.exitValue() + "! Maybe an error occurred... check the log file");
 						success = false;
 					}
 				} catch (IllegalThreadStateException itse) {
-					PMS.error("An error occurred", itse);
+					logger.error("An error occurred", itse);
 				}
 			}
 			if (attachedProcesses != null) {
-				for(ProcessWrapper pw:attachedProcesses) {
-					if (pw != null)
+				for (ProcessWrapper pw : attachedProcesses) {
+					if (pw != null) {
 						pw.stopProcess();
+					}
 				}
 			}
 			PMS.get().currentProcesses.remove(process);
 		}
 	}
-	
+
 	public void runInNewThread() {
 		this.start();
 	}
-	
+
 	public InputStream getInputStream(long seek) throws IOException {
-		if (bo != null)
+		if (bo != null) {
 			return bo.getInputStream(seek);
-		else if (outConsumer != null && outConsumer.getBuffer() != null)
+		} else if (outConsumer != null && outConsumer.getBuffer() != null) {
 			return outConsumer.getBuffer().getInputStream(seek);
-		else if (params.outputFile != null) {
+		} else if (params.outputFile != null) {
 			BlockerFileInputStream fIn = new BlockerFileInputStream(this, params.outputFile, params.minFileSize);
 			fIn.skip(seek);
 			return fIn;
 		}
 		return null;
 	}
-	
+
 	public List<String> getOtherResults() {
-		if (outConsumer == null)
+		if (outConsumer == null) {
 			return null;
-			try {
-				outConsumer.join(1000);
-			} catch (InterruptedException e) {}
+		}
+		try {
+			outConsumer.join(1000);
+		} catch (InterruptedException e) {
+		}
 		return outConsumer.getResults();
 	}
-	
+
 	public List<String> getResults() {
 		try {
 			stderrConsumer.join(1000);
-		} catch (InterruptedException e) {}
+		} catch (InterruptedException e) {
+		}
 		return stderrConsumer.getResults();
 	}
 
@@ -208,30 +224,26 @@ public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
 			if (process != null) {
 				Integer pid = ProcessUtil.getProcessID(process);
 				if (pid != null) {
-					PMS.info("Stopping Unix process " + pid + ": " + this);
+					logger.debug("Stopping Unix process " + pid + ": " + this);
 				} else {
-					PMS.info("Stopping process: " + this);
+					logger.debug("Stopping process: " + this);
 				}
 				ProcessUtil.destroy(process);
 			}
-			/*if (params != null && params.attachedPipeName != null) {
-				File pipe = new File(params.attachedPipeName);
-				if (pipe.exists()) {
-					if (pipe.delete())
-						pipe.deleteOnExit();
-				}
-			}*/
+
 			if (attachedProcesses != null) {
-				for(ProcessWrapper pw:attachedProcesses) {
-					if (pw != null)
+				for (ProcessWrapper pw : attachedProcesses) {
+					if (pw != null) {
 						pw.stopProcess();
+					}
 				}
 			}
-			if (outConsumer != null && outConsumer.getBuffer() != null)
+			if (outConsumer != null && outConsumer.getBuffer() != null) {
 				outConsumer.getBuffer().reset();
+			}
 		}
 	}
-	
+
 	public boolean isDestroyed() {
 		return destroyed;
 	}
@@ -241,9 +253,9 @@ public class ProcessWrapperImpl extends Thread implements ProcessWrapper {
 	}
 
 	public void setReadyToStop(boolean nullable) {
-		if (nullable != this.nullable)
-			PMS.debug("Ready to Stop: " + nullable);
+		if (nullable != this.nullable) {
+			logger.trace("Ready to Stop: " + nullable);
+		}
 		this.nullable = nullable;
 	}
-
 }

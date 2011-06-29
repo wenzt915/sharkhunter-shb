@@ -13,9 +13,13 @@ import java.util.List;
 
 import net.pms.PMS;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ExternalFactory {
+	private static final Logger logger = LoggerFactory.getLogger(ExternalFactory.class);
 	private static List<ExternalListener> externalListeners;
-	
+
 	public static List<ExternalListener> getExternalListeners() {
 		return externalListeners;
 	}
@@ -23,29 +27,27 @@ public class ExternalFactory {
 	static {
 		externalListeners = new ArrayList<ExternalListener>();
 	}
-	
+
 	public static void registerListener(ExternalListener listener) {
 		if (!externalListeners.contains(listener)) {
 			externalListeners.add(listener);
 		}
 	}
-	
+
 	public static void lookup() {
 		File pluginDirectory = new File(PMS.getConfiguration().getPluginDirectory());
-		PMS.minimal("Loading plugins from " + pluginDirectory.getAbsolutePath());
+		logger.info("Loading plugins from " + pluginDirectory.getAbsolutePath());
 
 		if (!pluginDirectory.exists()) {
-			// FIXME: should be a warning or error
-			PMS.minimal("Plugin directory doesn't exist: " + pluginDirectory);
+			logger.warn("Plugin directory doesn't exist: " + pluginDirectory);
 			return;
 		}
 
 		if (!pluginDirectory.isDirectory()) {
-			// FIXME: should be a warning or error
-			PMS.minimal("Plugin directory is not a directory: " + pluginDirectory);
+			logger.warn("Plugin directory is not a directory: " + pluginDirectory);
 			return;
 		}
-		   
+
 		File[] jarFiles = pluginDirectory.listFiles(
 			new FileFilter() {
 				public boolean accept(File file) {
@@ -57,7 +59,7 @@ public class ExternalFactory {
 		int nJars = jarFiles.length;
 
 		if (nJars == 0) {
-			PMS.minimal("No plugins found");
+			logger.info("No plugins found");
 			return;
 		}
 
@@ -67,7 +69,7 @@ public class ExternalFactory {
 			try {
 				jarURLList.add(jarFiles[i].toURI().toURL());
 			} catch (MalformedURLException e) {
-				PMS.error("Can't convert file path " + jarFiles[i] + " to URL", e);
+				logger.error("Can't convert file path " + jarFiles[i] + " to URL", e);
 			}
 		}
 
@@ -80,7 +82,7 @@ public class ExternalFactory {
 		try {
 			resources = classLoader.getResources("plugin");
 		} catch (IOException e) {
-			PMS.error("Can't load plugin resources", e);
+			logger.error("Can't load plugin resources", e);
 			return;
 		}
 
@@ -88,16 +90,17 @@ public class ExternalFactory {
 			URL url = resources.nextElement();
 			try {
 				InputStreamReader in = new InputStreamReader(url.openStream());
-				char[] name = new char [512]; 
+				char[] name = new char[512];
 				in.read(name);
 				in.close();
 				String pluginMainClassName = new String(name).trim();
-				PMS.minimal("Found plugin: " + pluginMainClassName);
+				logger.info("Found plugin: " + pluginMainClassName);
 				Object instance = classLoader.loadClass(pluginMainClassName).newInstance();
-				if (instance instanceof ExternalListener)
+				if (instance instanceof ExternalListener) {
 					registerListener((ExternalListener) instance);
+				}
 			} catch (Exception e) {
-				PMS.error("Error loading plugin", e);
+				logger.error("Error loading plugin", e);
 			}
 		}
 	}
