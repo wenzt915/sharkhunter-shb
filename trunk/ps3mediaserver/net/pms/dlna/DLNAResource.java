@@ -273,7 +273,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 			defaultRenderer = parent.defaultRenderer;
 		}
 		if (child.isValid()) {
-			logger.debug("Adding " + child.getName() + " / class: " + child.getClass().getName());
+			logger.trace("Adding " + child.getName() + " / class: " + child.getClass().getName());
 			VirtualFolder vf = null;
 			//VirtualFolder vfCopy = null;
 
@@ -342,14 +342,21 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 						forceTranscode = child.ext.skip(PMS.getConfiguration().getForceTranscode(), defaultRenderer != null ? defaultRenderer.getTranscodedExtensions() : null);
 					}
 
+					boolean hasEmbeddedSubs = false;
+					if (child.media != null) {
+						for(DLNAMediaSubtitle s:child.media.subtitlesCodes) {
+							hasEmbeddedSubs |= s.getSubType().equals("Embedded");
+						}
+					}
+
 					// Force transcoding if
 					// 1- MediaInfo support detected the file was not matched with supported codec configs and no SkipTranscode extension forced by user
 					// or 2- ForceTranscode extension forced by user
 					// or 3- FFmpeg support and the file is not ps3 compatible (need to remove this ?) and no SkipTranscode extension forced by user
-					// or 4- There's some sub files to deal with
-					if ((forceTranscodeV2 && !skipTranscode) || forceTranscode || (!parserV2 && !child.ext.ps3compatible() && !skipTranscode) || (PMS.getConfiguration().getUseSubtitles() && child.srtFile)) {
+					// or 4- There's some sub files or embedded subs to deal with and no SkipTranscode extension forced by user
+					if (forceTranscode || !skipTranscode && (forceTranscodeV2 || (!parserV2 && !child.ext.ps3compatible()) || (PMS.getConfiguration().getUseSubtitles() && child.srtFile) || hasEmbeddedSubs)) {
 						child.player = pl;
-						logger.debug("Switching " + child.getName() + " to player: " + pl.toString());
+						logger.trace("Switching " + child.getName() + " to player: " + pl.toString());
 					}
 
 					if (child.ext.isVideo() && (!child.notranscodefolder) && (!PMS.getConfiguration().getHideTranscodeEnabled())) {
@@ -377,7 +384,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 						fileFolder.children.add(newChild);
 						fileFolder.childrenNumber++;
 						newChild.parent = fileFolder;
-						logger.debug("Duplicate " + child.getName() + " with player: " + pl.toString());
+						logger.trace("Duplicate " + child.getName() + " with player: " + pl.toString());
 
 						vf.addChild(fileFolder);
 					}

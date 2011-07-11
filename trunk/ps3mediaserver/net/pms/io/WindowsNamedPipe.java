@@ -81,9 +81,6 @@ public class WindowsNamedPipe extends Thread implements ProcessWrapper {
 		);
 	}
 
-	public static void main(String[] args) throws Exception {
-	}
-
 	private String name;
 	private boolean in;
 	private boolean forcereconnect;
@@ -156,7 +153,6 @@ public class WindowsNamedPipe extends Thread implements ProcessWrapper {
 			if (b1) {
 				if (in) {
 					IntByReference ibr = new IntByReference();
-					int count = 0;
 					Memory buffer = new Memory(BUFSIZE);
 					while (loop) {
 						boolean fSuccess = Kernel32.INSTANCE.ReadFile(handle1,
@@ -174,7 +170,6 @@ public class WindowsNamedPipe extends Thread implements ProcessWrapper {
 							}
 							break;
 						}
-						count++;
 						if (directBuffer != null) {
 							directBuffer.write(buffer.getByteArray(0, cbBytesRead));
 						}
@@ -201,7 +196,6 @@ public class WindowsNamedPipe extends Thread implements ProcessWrapper {
 				} else {
 					byte b[] = new byte[BUFSIZE];
 					IntByReference ibw = new IntByReference();
-					int count = 0;
 					Memory buffer = new Memory(BUFSIZE);
 					while (loop) {
 						int cbBytesRead = readable.read(b);
@@ -220,7 +214,6 @@ public class WindowsNamedPipe extends Thread implements ProcessWrapper {
 						if (debug != null) {
 							debug.write(buffer.getByteArray(0, cbBytesRead));
 						}
-						count++;
 						if (!fSuccess || cbWritten == 0) {
 							readable.close();
 							if (debug != null) {

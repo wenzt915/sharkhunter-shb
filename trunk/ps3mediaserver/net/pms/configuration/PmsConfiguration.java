@@ -43,6 +43,7 @@ public class PmsConfiguration {
 	private static final String KEY_AUDIO_CHANNEL_COUNT = "audiochannels";
 	private static final String KEY_AUDIO_RESAMPLE = "audio_resample";
 	private static final String KEY_AUDIO_THUMBNAILS_METHOD = "audio_thumbnails_method";
+	private static final String KEY_AUTO_UPDATE = "auto_update";
 	private static final String KEY_AVISYNTH_CONVERT_FPS = "avisynth_convertfps";
 	private static final String KEY_AVISYNTH_SCRIPT = "avisynth_script";
 	private static final String KEY_BUFFER_TYPE = "buffertype";
@@ -144,33 +145,9 @@ public class PmsConfiguration {
 	private static final String KEY_VIRTUAL_FOLDERS = "vfolders";
 	private static final String UNLIMITED_BITRATE = "0";
 
-	/*
-	 * the name of the subdirectory under which PMS config files are stored for this build.
-	 * the default value is "PMS" e.g.
-	 *
-	 *     Windows:
-	 *
-	 *         %ALLUSERSPROFILE%\PMS
-	 *
-	 *     Mac OS X:
-	 *
-	 *         /home/<username>/Library/Application Support/PMS
-	 *
-	 *     Linux &c.
-	 *
-	 *         /home/<username>/.config/PMS
-	 *
-	 * a custom build can change this to avoid interfering with the config files of other
-	 * builds e.g.:
-	 *
-	 *     BUILD = "PMS Rendr Edition";
-	 *     BUILD = "pms-mlx";
-	 *
-	 * Note: custom Windows builds that change this value should change the corresponding "$ALLUSERSPROFILE\PMS"
-	 * value in nsis/setup.nsi
-	 */
-	private static final String BUILD_BASE = "PMS";
-	private static final String BUILD = BUILD_BASE + "-SHB";
+	// the name of the subdirectory under which PMS config files are stored for this build (default: PMS).
+	// see Build for more details
+	private static final String PROFILE_DIRECTORY_NAME = Build.getProfileDirectoryName();
 
 	// the default profile name displayed on the renderer
 	private static String HOSTNAME;
@@ -194,13 +171,20 @@ public class PmsConfiguration {
 	private final ProgramPathDisabler programPaths;
 
 	/*
-		The following code enables a single environment variable - PMS_PROFILE - to be used to
+		The following code enables a single setting - PMS_PROFILE - to be used to
 		initialize PROFILE_PATH i.e. the path to the current session's profile (AKA PMS.conf).
 		It also initializes PROFILE_DIRECTORY - i.e. the directory the profile is located in -
 		which is needed for configuration-by-convention detection of WEB.conf (anything else?).
 
 		While this convention - and therefore PROFILE_DIRECTORY - will remain,
 		adding more configurables - e.g. web_conf = ... - is on the TODO list.
+
+		PMS_PROFILE is read (in this order) from the property pms.profile.path or the
+		environment variable PMS_PROFILE. If PMS is launched with the command-line option
+		"profiles" (e.g. from a shortcut), it displays a file chooser dialog that
+		allows the pms.profile.path property to be set. This makes it easy to run PMS
+		under multiple profiles without fiddling with environment variables, properties or
+		command-line arguments.
 
 		1) if PMS_PROFILE is not set, PMS.conf is located in: 
 
@@ -230,12 +214,20 @@ public class PmsConfiguration {
 			PMS_PROFILE = folder/dev.conf     # profile dir = folder
 			PMS_PROFILE = /path/to/some.file  # profile dir = /path/to/
 	 */
-	private static final String DEFAULT_PROFILE_FILENAME = "PMS.conf";
+	private static final String DEFAULT_PROFILE_FILENAME = "PMS.conf"; //$NON-NLS-1
+	private static final String ENV_PROFILE_PATH = "PMS_PROFILE"; //$NON-NLS-1
 	private static final String PROFILE_DIRECTORY; // path to directory containing PMS config files
 	private static final String PROFILE_PATH; // abs path to profile file e.g. /path/to/PMS.conf
+	private static final String PROPERTY_PROFILE_PATH = "pms.profile.path"; //$NON-NLS-1
 
 	static {
-		String profile = System.getenv("PMS_PROFILE"); //$NON-NLS-1$
+		// first try the system property, typically set via the profile chooser
+		String profile = System.getProperty(PROPERTY_PROFILE_PATH);
+
+		// failing that, try the environment variable
+		if (profile == null) {
+			profile = System.getenv(ENV_PROFILE_PATH);
+		}
 
 		if (profile != null) {
 			File f = new File(profile);
@@ -256,7 +248,7 @@ public class PmsConfiguration {
 			if (Platform.isWindows()) {
 				String programData = System.getenv("ALLUSERSPROFILE");
 				if (programData != null) {
-					profileDir = String.format("%s\\%s", programData, BUILD);
+					profileDir = String.format("%s\\%s", programData, PROFILE_DIRECTORY_NAME);
 				} else {
 					profileDir = ""; // i.e. current (working) directory
 				}
@@ -265,15 +257,15 @@ public class PmsConfiguration {
 					"%s/%s/%s",
 					System.getProperty("user.home"),
 					"/Library/Application Support",
-					BUILD
+					PROFILE_DIRECTORY_NAME
 				);
 			} else {
 				String xdgConfigHome = System.getenv("XDG_CONFIG_HOME");
 
 				if (xdgConfigHome == null) {
-					profileDir = String.format("%s/.config/%s", System.getProperty("user.home"), BUILD);
+					profileDir = String.format("%s/.config/%s", System.getProperty("user.home"), PROFILE_DIRECTORY_NAME);
 				} else {
-					profileDir = String.format("%s/%s", xdgConfigHome, BUILD);
+					profileDir = String.format("%s/%s", xdgConfigHome, PROFILE_DIRECTORY_NAME);
 				}
 			}
 
@@ -311,21 +303,21 @@ public class PmsConfiguration {
 			if (Platform.isWindows()) {
 				String appData = System.getenv("APPDATA");
 				if (appData != null)
-					profileDir = String.format("%s\\%s", appData, BUILD_BASE);
+					profileDir = String.format("%s\\%s", appData, Build.getProfileDirectoryName());
 			} else if (Platform.isMac()) {
 				profileDir = String.format(
 					"%s/%s/%s",
 					System.getProperty("user.home"),
 					"/Library/Application Support",
-					BUILD_BASE
+					Build.getProfileDirectoryName()
 				);
 			} else {
 				String xdgConfigHome = System.getenv("XDG_CONFIG_HOME");
 
 				if (xdgConfigHome == null) {
-					profileDir = String.format("%s/.config/%s", System.getProperty("user.home"), BUILD_BASE);
+					profileDir = String.format("%s/.config/%s", System.getProperty("user.home"), Build.getProfileDirectoryName());
 				} else {
-					profileDir = String.format("%s/%s", xdgConfigHome, BUILD_BASE);
+					profileDir = String.format("%s/%s", xdgConfigHome, Build.getProfileDirectoryName());
 				}
 			}
 		}
@@ -343,8 +335,8 @@ public class PmsConfiguration {
 		if (Platform.isWindows()) {
 			String appData = System.getenv("APPDATA");
 			if (appData != null) {
-				dir = String.format("%s\\%s", appData, BUILD_BASE);
-				dir1=String.format("%s\\%s", appData, BUILD);
+				dir = String.format("%s\\%s", appData, Build.getProfileDirectoryName());
+				dir1=String.format("%s\\%s", appData, Build.getProfileDirectoryName());
 			}
 			File[] f=new File[3];
 			File cf=null;
@@ -1071,7 +1063,7 @@ public class PmsConfiguration {
 	private static List<String> hackAvs(WinUtils registry, List<String> input) {
 		List<String> toBeRemoved = new ArrayList<String>();
 		for (String engineId : input) {
-			if (engineId.startsWith("avs") && !registry.isAvis() && PMS.get().isWindows()) {
+			if (engineId.startsWith("avs") && !registry.isAvis() && Platform.isWindows()) {
 				if (!avsHackLogged) {
 					logger.info("AviSynth is not installed. You cannot use " + engineId + " as a transcoding engine."); //$NON-NLS-1$ //$NON-NLS-2$
 					avsHackLogged = true;
@@ -1087,8 +1079,7 @@ public class PmsConfiguration {
 
 	public void save() throws ConfigurationException {
 		configuration.save();
-		logger.info("(X) Configuration saved to: " + PROFILE_PATH);
-		logger.info("(Y) Configuration saved to: " + PROFILE_PATH);
+		logger.info("Configuration saved to: " + PROFILE_PATH);
 	}
 
 	public String getFolders() {
@@ -1423,5 +1414,13 @@ public class PmsConfiguration {
 		}
 
 		return getString(KEY_PROFILE_NAME, HOSTNAME);
+	}
+
+	public boolean isAutoUpdate() {
+		return Build.isUpdatable() && configuration.getBoolean(KEY_AUTO_UPDATE, false);
+	}
+
+	public void setAutoUpdate(boolean value) {
+		configuration.setProperty(KEY_AUTO_UPDATE, value);
 	}
 }

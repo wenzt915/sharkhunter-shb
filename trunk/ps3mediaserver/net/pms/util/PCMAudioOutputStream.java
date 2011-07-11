@@ -1,7 +1,5 @@
 package net.pms.util;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -73,18 +71,5 @@ public class PCMAudioOutputStream extends FlowParserOutputStream {
 	@Override
 	protected void beforeChunkSend() throws IOException {
 		writePayload(payload);
-	}
-
-	public static void main(String args[]) throws Exception {
-		FileInputStream fis = new FileInputStream("D:\\eclipse3.4\\workspace\\ps3mediaserver\\tmp\\24bits.dts");
-		FileOutputStream out = new FileOutputStream("D:\\eclipse3.4\\workspace\\ps3mediaserver\\tmp\\final.pcm");
-		PCMAudioOutputStream h = new PCMAudioOutputStream(out, 2, 48000, 16);
-		byte b[] = new byte[512 * 1024];
-		int n = -1;
-		while ((n = fis.read(b)) > -1) {
-			h.write(b, 0, n);
-		}
-		h.close();
-		fis.close();
 	}
 }

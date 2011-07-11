@@ -1,7 +1,6 @@
 package net.pms.configuration;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,7 +10,6 @@ import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 
 import net.pms.Messages;
-import net.pms.PMS;
 import net.pms.dlna.MediaInfoParser;
 import net.pms.dlna.RootFolder;
 import net.pms.formats.Format;
@@ -49,7 +47,7 @@ public class RendererConfiguration {
 
 		File renderersDir = new File("renderers");
 
-		if (renderersDir.exists()) {
+		if (renderersDir.exists() && renderersDir.isDirectory()) {
 			logger.info("Loading renderer configurations from " + renderersDir.getAbsolutePath());
 
 			File confs[] = renderersDir.listFiles();
@@ -73,36 +71,16 @@ public class RendererConfiguration {
 	private InetAddress currentRendererAddress;
 	private int speedInMbits;
 	private RootFolder rootFolder;
-	private boolean mediaLibraryAdded = false;
-
-	public boolean isMediaLibraryAdded() {
-		return mediaLibraryAdded;
-	}
-
-	public void setMediaLibraryAdded(boolean mediaLibraryAdded) {
-		this.mediaLibraryAdded = mediaLibraryAdded;
-	}
 
 	public static void resetAllRenderers() {
-		for (RendererConfiguration r : renderersConfs) {
-			r.mediaLibraryAdded = false;
+		for(RendererConfiguration rc  : renderersConfs) {
+			rc.rootFolder = null;
 		}
 	}
 
 	public RootFolder getRootFolder() {
-		return getRootFolder(true);
-	}
-
-	public RootFolder getRootFolder(boolean initialize) {
 		if (rootFolder == null) {
 			rootFolder = new RootFolder();
-			if (initialize) {
-				try {
-					PMS.get().manageRoot(this);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
 		}
 		return rootFolder;
 	}
@@ -160,10 +138,6 @@ public class RendererConfiguration {
 			speedInMbits = (int) (1024 / time);
 			logger.info("Renderer " + this + " has an estimated network speed of: " + speedInMbits + " Mb/s");
 		}
-	}
-
-	public static void main(String args[]) throws Exception {
-		new RendererConfiguration().associateIP(InetAddress.getByName("192.168.0.10"));
 	}
 
 	public static RendererConfiguration getRendererConfigurationBySocketAddress(InetAddress sa) {

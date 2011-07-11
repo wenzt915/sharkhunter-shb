@@ -136,7 +136,7 @@ public class MEncoderVideo extends Player {
 	protected boolean oaccopy;
 	protected boolean mpegts;
 	protected boolean wmv;
-	protected String overridenMainArgs[];
+	protected String overriddenMainArgs[];
 
 	public static final String DEFAULT_CODEC_CONF_SCRIPT =
 		Messages.getString("MEncoderVideo.68") //$NON-NLS-1$
@@ -158,6 +158,7 @@ public class MEncoderVideo extends Player {
 		+ "container == mov :: -mc 0.1 -noass\n" //$NON-NLS-1$
 		+ "container == rm  :: -mc 0.1\n" //$NON-NLS-1$
 		+ "container == matroska && framerate == 29.97  :: -nomux -mc 0\n" //$NON-NLS-1$
+		+ "container == mp4 && vcodec == h264 :: -mc 0.1 -noass\n" //$NON-NLS-1$
 		+ "\n" //$NON-NLS-1$
 		+ Messages.getString("MEncoderVideo.87") //$NON-NLS-1$
 		+ Messages.getString("MEncoderVideo.88") //$NON-NLS-1$
@@ -964,20 +965,20 @@ public class MEncoderVideo extends Player {
 	public String[] args() {
 		String args[] = null;
 		String defaultArgs[] = getDefaultArgs();
-		if (overridenMainArgs != null) {
-			args = new String[defaultArgs.length + overridenMainArgs.length];
+		if (overriddenMainArgs != null) {
+			args = new String[defaultArgs.length + overriddenMainArgs.length];
 			for (int i = 0; i < defaultArgs.length; i++) {
 				args[i] = defaultArgs[i];
 			}
-			for (int i = 0; i < overridenMainArgs.length; i++) {
-				if (overridenMainArgs[i].equals("-of") || overridenMainArgs[i].equals("-oac") || overridenMainArgs[i].equals("-ovc") || overridenMainArgs[i].equals("-mpegopts")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			for (int i = 0; i < overriddenMainArgs.length; i++) {
+				if (overriddenMainArgs[i].equals("-of") || overriddenMainArgs[i].equals("-oac") || overriddenMainArgs[i].equals("-ovc") || overriddenMainArgs[i].equals("-mpegopts")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 					logger.info("MEncoder encoder settings: You cannot change Muxer, Muxer options, Video Codec or Audio Codec"); //$NON-NLS-1$
-					overridenMainArgs[i] = "-quiet"; //$NON-NLS-1$
-					if (i + 1 < overridenMainArgs.length) {
-						overridenMainArgs[i + 1] = "-quiet"; //$NON-NLS-1$
+					overriddenMainArgs[i] = "-quiet"; //$NON-NLS-1$
+					if (i + 1 < overriddenMainArgs.length) {
+						overriddenMainArgs[i + 1] = "-quiet"; //$NON-NLS-1$
 					}
 				}
-				args[i + defaultArgs.length] = overridenMainArgs[i];
+				args[i + defaultArgs.length] = overriddenMainArgs[i];
 			}
 		} else {
 			args = defaultArgs;
@@ -1185,7 +1186,7 @@ public class MEncoderVideo extends Player {
 		logger.trace("channels=" + channels);
 
 		StringTokenizer st = new StringTokenizer(alternativeCodec + "-channels " + channels + " " + configuration.getMencoderDecode() + add, " "); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-		overridenMainArgs = new String[st.countTokens()];
+		overriddenMainArgs = new String[st.countTokens()];
 		int i = 0;
 		boolean processToken = false;
 		int nThreads = (dvd || fileName.toLowerCase().endsWith("dvr-ms")) ? //$NON-NLS-1$
@@ -1204,7 +1205,7 @@ public class MEncoderVideo extends Player {
 				processToken = true;
 			}
 
-			overridenMainArgs[i++] = token;
+			overriddenMainArgs[i++] = token;
 		}
 
 		if (configuration.getMencoderMainSettings() != null) {
@@ -1227,15 +1228,25 @@ public class MEncoderVideo extends Player {
 
 			encodeSettings = addMaximumBitrateConstraints(encodeSettings, media, mainConfig, params.mediaRenderer);
 			st = new StringTokenizer(encodeSettings, " "); //$NON-NLS-1$
-			int oldc = overridenMainArgs.length;
-			overridenMainArgs = Arrays.copyOf(overridenMainArgs, overridenMainArgs.length + st.countTokens());
+			int oldc = overriddenMainArgs.length;
+			overriddenMainArgs = Arrays.copyOf(overriddenMainArgs, overriddenMainArgs.length + st.countTokens());
 			i = oldc;
 			while (st.hasMoreTokens()) {
-				overridenMainArgs[i++] = st.nextToken();
+				overriddenMainArgs[i++] = st.nextToken();
 			}
 		}
 
 		boolean needAssFixPTS = false;
+
+		boolean foundNoassParam = false;
+		if (media != null) {
+			String sArgs [] = getSpecificCodecOptions(configuration.getCodecSpecificConfig(), media, params, fileName, subString, configuration.isMencoderIntelligentSync(), false);
+			for(String s:sArgs) {
+				if (s.equals("-noass")) {
+					foundNoassParam = true;
+				}
+			}
+		}
 
 		StringBuilder sb = new StringBuilder();
 
@@ -1248,6 +1259,7 @@ public class MEncoderVideo extends Player {
 			!(params.sid.type == DLNAMediaSubtitle.SUBRIP && media.container.equals("mp4")) &&
 			!configuration.isMencoderDisableSubs() &&
 			configuration.isMencoderAss() &&
+			!foundNoassParam &&
 			!dvd &&
 			!avisynth()
 		) {
@@ -1293,7 +1305,7 @@ public class MEncoderVideo extends Player {
 					sb.append("-subfont ").append(font).append(" "); //$NON-NLS-1$ //$NON-NLS-2$
 				}
 			}
-			if (configuration.isMencoderAss()) {
+			if (configuration.isMencoderAss() && !foundNoassParam) {
 				if (!configuration.isMencoderAssDefaultStyle() || (subString != null && params.sid.type != DLNAMediaSubtitle.ASS)) {
 					String assSubColor = "ffffff00";
 					if (configuration.getSubsColor() != 0) {
@@ -1319,8 +1331,8 @@ public class MEncoderVideo extends Player {
 		}
 
 		st = new StringTokenizer(sb.toString(), " "); //$NON-NLS-1$
-		int oldc = overridenMainArgs.length;
-		overridenMainArgs = Arrays.copyOf(overridenMainArgs, overridenMainArgs.length + st.countTokens());
+		int oldc = overriddenMainArgs.length;
+		overriddenMainArgs = Arrays.copyOf(overriddenMainArgs, overriddenMainArgs.length + st.countTokens());
 		i = oldc;
 		processToken = false;
 		while (st.hasMoreTokens()) {
@@ -1333,7 +1345,7 @@ public class MEncoderVideo extends Player {
 				s = "-quiet"; //$NON-NLS-1$
 				processToken = true;
 			}
-			overridenMainArgs[i++] = s;
+			overriddenMainArgs[i++] = s;
 		}
 
 		String cmdArray[] = new String[18 + args().length];

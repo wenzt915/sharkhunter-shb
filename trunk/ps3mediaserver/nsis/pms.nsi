@@ -13,8 +13,8 @@ VIAddVersionKey "CompanyName" "A. Brochard"
 VIAddVersionKey "LegalTrademarks" ""
 VIAddVersionKey "LegalCopyright" ""
 VIAddVersionKey "FileDescription" "PS3 Media Server"
-VIAddVersionKey "FileVersion" "1.30.0"
-VIProductVersion "1.30.0.0"
+VIAddVersionKey "FileVersion" "1.31.0"
+VIProductVersion "1.31.0.0"
 
  
 !define JARPATH "pms.jar"
