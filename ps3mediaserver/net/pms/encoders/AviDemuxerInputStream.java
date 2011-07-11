@@ -19,7 +19,6 @@
 package net.pms.encoders;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,7 +28,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 
 import net.pms.PMS;
-import net.pms.configuration.PmsConfiguration;
 import net.pms.io.Gob;
 import net.pms.io.OutputParams;
 import net.pms.io.PipeProcess;
@@ -165,16 +163,6 @@ public class AviDemuxerInputStream extends InputStream {
 		new Thread(r).start();
 		parsing = new Thread(r2);
 		logger.trace("Ready to mux"); //$NON-NLS-1$
-	}
-
-	public static void main(String args[]) {
-		try {
-			OutputParams params = new OutputParams(new PmsConfiguration());
-			AviDemuxerInputStream av = new AviDemuxerInputStream(new FileInputStream("D:\\DEV\\PMS\\divers\\_\\speed.avi"), params, null); //$NON-NLS-1$
-			av.parsing.start();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	private void parseHeader() throws IOException {

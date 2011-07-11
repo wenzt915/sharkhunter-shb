@@ -31,7 +31,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.StringTokenizer;
 
@@ -216,23 +215,5 @@ public class Proxy extends Thread {
 		resource = resource.replace('<', '\u00b5');
 		resource = resource.replace('|', '\u00b5');
 		return resource;
-	}
-
-	public static void main(String[] args) throws IOException {
-		ServerSocket s = new ServerSocket(8080);
-		// System.out.println("Started " + s);
-		try {
-			while (true) {
-				Socket socket = s.accept();
-				try {
-					new Proxy(socket, false);
-				} catch (IOException e) {
-					// System.err.println("E1 " + Thread.currentThread().getName() + ": " + e.getMessage());
-					socket.close();
-				}
-			}
-		} finally {
-			s.close();
-		}
 	}
 }

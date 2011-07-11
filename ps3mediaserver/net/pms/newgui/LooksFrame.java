@@ -75,65 +75,48 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 	private final PmsConfiguration configuration;
 	public static final String START_SERVICE = "start.service"; //$NON-NLS-1$
 	private static final long serialVersionUID = 8723727186288427690L;
-
-	public TracesTab getTt() {
-		return tt;
-	}
 	private NavigationShareTab ft;
-
-	public NavigationShareTab getFt() {
-		return ft;
-	}
 	private StatusTab st;
 	private TracesTab tt;
 	private TranscodingTab tr;
-
-	public TranscodingTab getTr() {
-		return tr;
-	}
 	private GeneralTab nt;
 	private AbstractButton reload;
-
-	public AbstractButton getReload() {
-		return reload;
-	}
 	private JLabel status;
 	protected static final Dimension PREFERRED_SIZE = new Dimension(1000, 750);
 	// https://code.google.com/p/ps3mediaserver/issues/detail?id=949
 	protected static final Dimension MINIMUM_SIZE = new Dimension(800, 480);
+	private static boolean lookAndFeelInitialized = false;
 
-	/**
-	 * Constructs a <code>DemoFrame</code>, configures the UI,
-	 * and builds the content.
-	 */
-	public LooksFrame(AutoUpdater autoUpdater, PmsConfiguration configuration) {
-		this.autoUpdater = autoUpdater;
-		this.configuration = configuration;
-		assert this.autoUpdater != null;
-		assert this.configuration != null;
-		if(autoUpdater!=null) {
-			autoUpdater.addObserver(this);
-			update(autoUpdater, null);
+	public TracesTab getTt() {
+		return tt;
+	}
+
+	public NavigationShareTab getFt() {
+		return ft;
+	}
+
+	public TranscodingTab getTr() {
+		return tr;
+	}
+
+	public AbstractButton getReload() {
+		return reload;
+	}
+
+	static void initializeLookAndFeel() {
+		if (lookAndFeelInitialized) {
+			return;
 		}
-		Options.setDefaultIconSize(new Dimension(18, 18));
 
-		Options.setUseNarrowButtons(true);
-
-		// Global options
-		Options.setTabIconsEnabled(true);
-		UIManager.put(Options.POPUP_DROP_SHADOW_ENABLED_KEY, null);
-
-		// Swing Settings
 		LookAndFeel selectedLaf = null;
-		if (PMS.get().isWindows()) {
+		if (Platform.isWindows()) {
 			try {
 				selectedLaf = (LookAndFeel) Class.forName("com.jgoodies.looks.windows.WindowsLookAndFeel").newInstance(); //$NON-NLS-1$
 				//selectedLaf = (LookAndFeel) Class.forName("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel").newInstance(); //$NON-NLS-1$
 			} catch (Exception e) {
 				selectedLaf = new PlasticLookAndFeel();
 			}
-		} else if (System.getProperty("nativelook") == null && !Platform.isMac()) //$NON-NLS-1$
-		{
+		} else if (System.getProperty("nativelook") == null && !Platform.isMac()) { //$NON-NLS-1$
 			selectedLaf = new PlasticLookAndFeel();
 		} else {
 			try {
@@ -179,8 +162,34 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 			}
 		}
 
-		// http://propedit.sourceforge.jp/propertieseditor.jnlp
+		lookAndFeelInitialized = true;
+	}
 
+	/**
+	 * Constructs a <code>DemoFrame</code>, configures the UI,
+	 * and builds the content.
+	 */
+	public LooksFrame(AutoUpdater autoUpdater, PmsConfiguration configuration) {
+		this.autoUpdater = autoUpdater;
+		this.configuration = configuration;
+		assert this.configuration != null;
+		Options.setDefaultIconSize(new Dimension(18, 18));
+		Options.setUseNarrowButtons(true);
+
+		// Global options
+		Options.setTabIconsEnabled(true);
+		UIManager.put(Options.POPUP_DROP_SHADOW_ENABLED_KEY, null);
+
+		// Swing Settings
+		initializeLookAndFeel();
+
+		// wait till the look and feel has been initialized before (possibly) displaying the update notification dialog
+		if (autoUpdater != null) {
+			autoUpdater.addObserver(this);
+			autoUpdater.pollServer();
+		}
+
+		// http://propedit.sourceforge.jp/propertieseditor.jnlp
 		Font sf = null;
 
 		// Set an unicode font for testing exotics languages (japanese)
@@ -407,8 +416,15 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 		tr.addEngines();
 	}
 
+	// fired on AutoUpdater state changes
 	public void update(Observable o, Object arg) {
-		if (o == autoUpdater) {
+		if (configuration.isAutoUpdate()) {
+			checkForUpdates();
+		}
+	}
+
+	public void checkForUpdates() {
+		if (autoUpdater != null) {
 			try {
 				AutoUpdateDialog.showIfNecessary(this, autoUpdater);
 			} catch (NoClassDefFoundError ncdf) {

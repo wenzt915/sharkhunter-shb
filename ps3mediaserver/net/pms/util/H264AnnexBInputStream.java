@@ -1,12 +1,7 @@
 package net.pms.util;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
-import net.pms.dlna.DLNAMediaInfo;
-import net.pms.dlna.InputFile;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,21 +133,5 @@ public class H264AnnexBInputStream extends InputStream {
 		if (source != null) {
 			source.close();
 		}
-	}
-
-	public static void main(String args[]) throws Exception {
-		InputFile newInput = new InputFile();
-		newInput.filename = "D:\\Tests\\mov\\harry.hdmov";
-		byte header[][] = new DLNAMediaInfo().getAnnexBFrameHeader(newInput);
-		FileInputStream fis = new FileInputStream("D:\\eclipse3.4\\workspace\\ps3mediaserver\\win32\\harry");
-		H264AnnexBInputStream h = new H264AnnexBInputStream(fis, header[1]);
-		FileOutputStream out = new FileOutputStream("D:\\eclipse3.4\\workspace\\ps3mediaserver\\win32\\raw_new.h264");
-		byte b[] = new byte[512 * 1024];
-		int n = -1;
-		while ((n = h.read(b)) > -1) {
-			out.write(b, 0, n);
-		}
-		out.close();
-		h.close();
 	}
 }

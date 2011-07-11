@@ -1,7 +1,5 @@
 package net.pms.util;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -81,25 +79,6 @@ public class DTSAudioOutputStream extends FlowParserOutputStream {
 
 	@Override
 	protected void beforeChunkSend() throws IOException {
-	}
-
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) throws Exception {
-		FileInputStream fis = new FileInputStream("H:\\Tests\\m2ts\\dtshd.dts");
-		FileOutputStream out = new FileOutputStream("D:\\eclipse3.4\\workspace\\ps3mediaserver\\tmp\\final.pcm");
-		DTSAudioOutputStream h = new DTSAudioOutputStream(new PCMAudioOutputStream(out, 2, 48000, 16));
-		long t1 = System.currentTimeMillis();
-		byte b[] = new byte[512 * 1024];
-		int n = -1;
-		while ((n = fis.read(b)) > -1) {
-			h.write(b, 0, n);
-		}
-		long t2 = System.currentTimeMillis();
-		System.out.println(":" + (t2 - t1) + " - " + h.count);
-		h.close();
-		fis.close();
 	}
 
 	public boolean isDts() {
