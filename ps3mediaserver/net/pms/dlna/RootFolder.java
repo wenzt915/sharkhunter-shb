@@ -59,6 +59,7 @@ public class RootFolder extends DLNAResource {
 	private static final Logger logger = LoggerFactory.getLogger(RootFolder.class);
 	private PmsConfiguration configuration = PMS.getConfiguration();
 	private boolean running;
+	private FolderLimit lim;
 
 	public RootFolder() {
 		id = "0";
@@ -137,7 +138,16 @@ public class RootFolder extends DLNAResource {
 				addChild(videoSettingsRes);
 			}
 		}
+		
+		lim=new FolderLimit();
+		addChild(lim);
+		
 		discovered = true;
+	}
+	
+	public void setFolderLim(DLNAResource r) {
+		if(lim!=null)
+			lim.setStart(r);
 	}
 
 	public void scan() {
