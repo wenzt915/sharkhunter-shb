@@ -10,6 +10,7 @@ import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 
 import net.pms.Messages;
+import net.pms.dlna.DLNAResource;
 import net.pms.dlna.MediaInfoParser;
 import net.pms.dlna.RootFolder;
 import net.pms.formats.Format;
@@ -83,6 +84,11 @@ public class RendererConfiguration {
 			rootFolder = new RootFolder();
 		}
 		return rootFolder;
+	}
+	
+	public void addFolderLimit(DLNAResource res) {
+		if(rootFolder!=null)	
+			rootFolder.setFolderLim(res);
 	}
 
 	public int getSpeedInMbits() {
