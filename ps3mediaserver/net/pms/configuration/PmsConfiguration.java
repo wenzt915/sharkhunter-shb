@@ -13,7 +13,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
-import net.pms.PMS;
 import net.pms.io.WinUtils;
 
 import org.apache.commons.configuration.Configuration;
@@ -68,6 +67,7 @@ public class PmsConfiguration {
 	private static final String KEY_HTTP_ENGINE_V2 = "http_engine_v2";
 	private static final String KEY_IP_FILTER = "ip_filter";
 	private static final String KEY_IPHOTO_ENABLED = "iphoto";
+	private static final String KEY_APERTURE_ENABLED = "aperture";
 	private static final String KEY_ITUNES_ENABLED = "itunes";
 	private static final String KEY_LANGUAGE = "language";
 	private static final String KEY_LOGGING_LEVEL = "level";
@@ -143,6 +143,7 @@ public class PmsConfiguration {
 	private static final String KEY_USE_SUBTITLES = "autoloadsrt";
 	private static final String KEY_VIDEOTRANSCODE_START_DELAY = "key_videotranscode_start_delay";
 	private static final String KEY_VIRTUAL_FOLDERS = "vfolders";
+	private static final String KEY_HDAUDIO_PASSTHROUGH = "hdaudio_passthrough";
 	private static final String UNLIMITED_BITRATE = "0";
 
 	// the name of the subdirectory under which PMS config files are stored for this build (default: PMS).
@@ -1226,6 +1227,14 @@ public class PmsConfiguration {
 	public boolean isDTSEmbedInPCM() {
 		return getBoolean(KEY_EMBED_DTS_IN_PCM, false);
 	}
+	
+	public void setHDAudioPassthrough(boolean value) {
+		configuration.setProperty(KEY_HDAUDIO_PASSTHROUGH, value);
+	}
+
+	public boolean isHDAudioPassthrough() {
+		return getBoolean(KEY_HDAUDIO_PASSTHROUGH, false);
+	}
 
 	public void setMencoderMuxWhenCompatible(boolean value) {
 		configuration.setProperty(KEY_MENCODER_MUX_COMPATIBLE, value);
@@ -1281,6 +1290,14 @@ public class PmsConfiguration {
 
 	public void setIphotoEnabled(boolean value) {
 		configuration.setProperty(KEY_IPHOTO_ENABLED, value);
+	}
+	
+	public boolean getApertureEnabled() {
+		return getBoolean(KEY_APERTURE_ENABLED, false);
+	}
+
+	public void setApertureEnabled(boolean value) {
+		configuration.setProperty(KEY_APERTURE_ENABLED, value);
 	}
 
 	public boolean getItunesEnabled() {
