@@ -446,7 +446,9 @@ public class RendererConfiguration {
 	public String getMimeType(String mimetype) {
 		if (isMediaParserV2()) {
 			if (mimetype != null && mimetype.equals(HTTPResource.VIDEO_TRANSCODE)) {
+				logger.trace("render "+toString()+" match mime "+mimetype);
 				mimetype = getFormatConfiguration().match(FormatConfiguration.MPEGPS, FormatConfiguration.MPEG2, FormatConfiguration.AC3);
+				logger.trace("matched mime "+mimetype);
 				if (isTranscodeToMPEGTSAC3()) {
 					mimetype = getFormatConfiguration().match(FormatConfiguration.MPEGTS, FormatConfiguration.MPEG2, FormatConfiguration.AC3);
 				} else if (isTranscodeToWMV()) {
