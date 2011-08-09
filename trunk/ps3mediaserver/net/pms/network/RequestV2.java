@@ -31,7 +31,9 @@ import net.pms.configuration.RendererConfiguration;
 import net.pms.dlna.DLNAMediaAudio;
 import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
+import net.pms.encoders.Player;
 import net.pms.external.StartStopListenerDelegate;
+import net.pms.formats.Format;
 import net.pms.PMS;
 
 import org.apache.commons.lang.StringUtils;
@@ -169,6 +171,7 @@ public class RequestV2 extends HTTPResource {
 		StringBuilder response = new StringBuilder();
 		DLNAResource dlna = null;
 		boolean xbox = mediaRenderer.isXBOX();
+		RendererConfiguration owner=null;
 
 		if ((method.equals("GET") || method.equals("HEAD")) && argument.startsWith("console/")) {
 			output.setHeader(HttpHeaders.Names.CONTENT_TYPE, "text/html");
@@ -186,8 +189,9 @@ public class RequestV2 extends HTTPResource {
 						RendererConfiguration r=renders.get(i);
 						if(r.equals(mediaRenderer))
 							continue;
-						files = PMS.get().getRootFolder(r).getDLNAResources(id, false, 0, 0, r);
+						files = PMS.get().getRootFolder(r).getDLNAResources(id, false, 0, 0, mediaRenderer);
 						if(files!=null&&files.size()!=0) {
+							owner=r;
 							break;
 						}
 					}
@@ -211,6 +215,8 @@ public class RequestV2 extends HTTPResource {
 					}
 					inputStream = dlna.getThumbnailInputStream();
 				} else {
+					if(owner!=null) 
+						dlna.updateRender(mediaRenderer);
 					inputStream = dlna.getInputStream(lowRange, highRange, timeseek, mediaRenderer);
 					if (inputStream != null) {
 						startStopListenerDelegate.start(dlna);
@@ -244,6 +250,8 @@ public class RequestV2 extends HTTPResource {
 					if (contentFeatures != null) {
 						output.setHeader("ContentFeatures.DLNA.ORG", files.get(0).getDlnaContentFeatures());
 					}
+					if(owner!=null)
+						dlna.updateRender(owner);
 					output.setHeader(HttpHeaders.Names.ACCEPT_RANGES, "bytes");
 					output.setHeader(HttpHeaders.Names.CONNECTION, "keep-alive");
 				}

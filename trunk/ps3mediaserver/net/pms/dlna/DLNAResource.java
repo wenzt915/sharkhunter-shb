@@ -1468,4 +1468,35 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		player=p;
 	}
 	
+	public void updateRender(RendererConfiguration newRender) {
+		defaultRenderer=newRender;
+		Player pl = null;
+		if (this.ext.getProfiles() != null && this.ext.getProfiles().size() > 0) {
+			int i = 0;
+			while (pl == null && i < this.ext.getProfiles().size()) {
+				pl = PMS.get().getPlayer(this.ext.getProfiles().get(i), this.ext);
+				i++;
+			}
+			String name = getName();
+			for (Class<? extends Player> clazz : this.ext.getProfiles()) {
+				for (Player p : PMS.get().getPlayers()) {
+					if (p.getClass().equals(clazz)) {
+						String end = "[" + p.id() + "]";
+						if (name.endsWith(end)) {
+							nametruncate = name.lastIndexOf(end);
+							pl = p;
+							break;
+						} else if (getParent() != null && getParent().getName().endsWith(end)) {
+							getParent().nametruncate = getParent().getName().lastIndexOf(end);
+							pl = p;
+							break;
+						}
+					}
+				}
+			}
+		}
+		if(pl!=null)
+			player=pl;
+		toString(newRender);
+	}
 }

@@ -170,7 +170,9 @@ public class Request extends HTTPResource {
 		StringBuilder response = new StringBuilder();
 		DLNAResource dlna = null;
 		boolean xbox = mediaRenderer.isXBOX();
-
+		RendererConfiguration owner=null;
+		
+		
 		if ((method.equals("GET") || method.equals("HEAD")) && argument.startsWith("console/")) {
 			output(output, "Content-Type: text/html");
 			response.append(HTMLConsole.servePage(argument.substring(8)));
@@ -187,8 +189,9 @@ public class Request extends HTTPResource {
 						RendererConfiguration r=renders.get(i);
 						if(r.equals(mediaRenderer))
 							continue;
-						files = PMS.get().getRootFolder(r).getDLNAResources(id, false, 0, 0, r);
-						if(files!=null&&files.size()!=0) {
+						files = PMS.get().getRootFolder(r).getDLNAResources(id, false, 0, 0, mediaRenderer);
+						if(files!=null&&files.size()!=0) { 
+							owner=r;
 							break;
 						}
 					}
@@ -198,6 +201,7 @@ public class Request extends HTTPResource {
 			if (transferMode != null) {
 				output(output, "TransferMode.DLNA.ORG: " + transferMode);
 			}
+			
 			if (files.size() == 1) {
 				String fileName = argument.substring(argument.lastIndexOf("/") + 1);
 				if (fileName.startsWith("thumbnail0000")) {
@@ -211,6 +215,8 @@ public class Request extends HTTPResource {
 					inputStream = files.get(0).getThumbnailInputStream();
 				} else {
 					dlna = files.get(0);
+					if(owner!=null)
+						dlna.updateRender(mediaRenderer);
 					inputStream = dlna.getInputStream(lowRange, highRange, timeseek, mediaRenderer);
 					if (inputStream != null) {
 						startStopListenerDelegate.start(dlna);
@@ -248,6 +254,8 @@ public class Request extends HTTPResource {
 					if (dlna.getPlayer() == null || xbox) {
 						output(output, "Accept-Ranges: bytes");
 					}
+					if(owner!=null)
+						dlna.updateRender(owner);
 					output(output, "Connection: keep-alive");
 				}
 			}
