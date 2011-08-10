@@ -133,6 +133,7 @@ public class PmsConfiguration {
 	private static final String KEY_TEMP_FOLDER_PATH = "temp";
 	private static final String KEY_THUMBNAIL_SEEK_POS = "thumbnail_seek_pos";
 	private static final String KEY_THUMBNAILS_ENABLED = "thumbnails";
+	private static final String KEY_IMAGE_THUMBNAILS_ENABLED = "image_thumbnails";
 	private static final String KEY_TRANSCODE_BLOCKS_MULTIPLE_CONNECTIONS = "transcode_block_multiple_connections";
 	private static final String KEY_TRANSCODE_KEEP_FIRST_CONNECTION = "transcode_keep_first_connection";
 	private static final String KEY_TSMUXER_FORCEFPS = "tsmuxer_forcefps";
@@ -842,6 +843,14 @@ public class PmsConfiguration {
 	public void setThumbnailsEnabled(boolean value) {
 		configuration.setProperty(KEY_THUMBNAILS_ENABLED, value);
 	}
+	
+	public boolean getImageThumbnailsEnabled() {
+		return getBoolean(KEY_IMAGE_THUMBNAILS_ENABLED, true);
+	}
+
+	public void setImageThumbnailsEnabled(boolean value) {
+		configuration.setProperty(KEY_IMAGE_THUMBNAILS_ENABLED, value);
+	}
 
 	public int getNumberOfCpuCores() {
 		int nbcores = Runtime.getRuntime().availableProcessors();
@@ -1439,5 +1448,9 @@ public class PmsConfiguration {
 
 	public void setAutoUpdate(boolean value) {
 		configuration.setProperty(KEY_AUTO_UPDATE, value);
+	}
+	
+	public String getIMConvertPath() {
+		return programPaths.getIMConvertPath();
 	}
 }

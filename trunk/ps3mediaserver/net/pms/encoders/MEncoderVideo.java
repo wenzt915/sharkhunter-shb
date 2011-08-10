@@ -538,7 +538,7 @@ public class MEncoderVideo extends Player {
 		subcp.setEditable(true);
 		builder.add(subcp, cc.xyw(3, 31, 7));
 
-		fribidi = new JCheckBox("FriBiDi mode"); //$NON-NLS-1$
+		fribidi = new JCheckBox(Messages.getString("MEncoderVideo.23")); //$NON-NLS-1$
 		fribidi.setContentAreaFilled(false);
 		if (configuration.isMencoderSubFribidi()) {
 			fribidi.setSelected(true);
@@ -887,7 +887,7 @@ public class MEncoderVideo extends Player {
 		builder.add(och, cc.xyw(7, 49, 1));
 
 		subColor = new JButton();
-		subColor.setText("Subs color");
+		subColor.setText(Messages.getString("MEncoderVideo.31"));
 		subColor.setBackground(new Color(configuration.getSubsColor()));
 		subColor.addActionListener(new ActionListener() {
 			@Override
@@ -972,7 +972,7 @@ public class MEncoderVideo extends Player {
 				args[i] = defaultArgs[i];
 			}
 			for (int i = 0; i < overriddenMainArgs.length; i++) {
-				if (overriddenMainArgs[i].equals("-of") || overriddenMainArgs[i].equals("-oac") || overriddenMainArgs[i].equals("-ovc") || overriddenMainArgs[i].equals("-mpegopts")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+				if ("-of".equals(overriddenMainArgs[i]) || "-oac".equals(overriddenMainArgs[i]) || "-ovc".equals(overriddenMainArgs[i]) || "-mpegopts".equals(overriddenMainArgs[i])) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 					logger.info("MEncoder encoder settings: You cannot change Muxer, Muxer options, Video Codec or Audio Codec"); //$NON-NLS-1$
 					overriddenMainArgs[i] = "-quiet"; //$NON-NLS-1$
 					if (i + 1 < overriddenMainArgs.length) {
@@ -1912,16 +1912,16 @@ public class MEncoderVideo extends Player {
 					int r = rank++;
 					interpreter.set("" + type, r); //$NON-NLS-1$
 					String secondaryType = "dummy"; //$NON-NLS-1$
-					if (type.equals("matroska")) { //$NON-NLS-1$
+					if ("matroska".equals(type)) { //$NON-NLS-1$
 						secondaryType = "mkv";
 						interpreter.set(secondaryType, r); //$NON-NLS-1$
-					} else if (type.equals("rm")) { //$NON-NLS-1$
+					} else if ("rm".equals(type)) { //$NON-NLS-1$
 						secondaryType = "rmvb";
 						interpreter.set(secondaryType, r); //$NON-NLS-1$
-					} else if (type.equals("mpeg2video")) { //$NON-NLS-1$
+					} else if ("mpeg2video".equals(type)) { //$NON-NLS-1$
 						secondaryType = "mpeg2";
 						interpreter.set(secondaryType, r); //$NON-NLS-1$
-					} else if (type.equals("mpeg1video")) { //$NON-NLS-1$
+					} else if ("mpeg1video".equals(type)) { //$NON-NLS-1$
 						secondaryType = "mpeg1";
 						interpreter.set(secondaryType, r); //$NON-NLS-1$
 					}

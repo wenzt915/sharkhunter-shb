@@ -2,7 +2,7 @@ Changelog:
 ==========
 2011-??-?? - 1.31.0
 
-	Updated OS X MPlayer to enable external VOBsub support
+	Updated OS X MPlayer to enable external VOBsub, ASS/SSA and Fribidi support
 	allow update checks to be performed manually (Windows only)
 	allow automatic update checks to be enabled (Windows only)
 	simplify PMS customization for packagers of custom builds
@@ -12,6 +12,7 @@ Changelog:
 	Added support for the AirPlayer app
 	Added support for Samsung TV model SEC_HHP_TV (thanks, coax-!)
 	Added Aperture support on OS X (thanks, coax-!)
+	Added thumbnail support for images (some code from http://www.rayinblu.com/ps3mediaserver)
 
 2011-07-06 - 1.30.1
 
