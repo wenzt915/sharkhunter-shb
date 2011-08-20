@@ -18,7 +18,9 @@
  */
 package net.pms.network;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
@@ -28,6 +30,7 @@ import java.util.StringTokenizer;
 import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
 import net.pms.dlna.DLNAMediaInfo;
+import net.pms.dlna.DLNAResource;
 import net.pms.external.StartStopListenerDelegate;
 
 import org.jboss.netty.buffer.ChannelBuffer;

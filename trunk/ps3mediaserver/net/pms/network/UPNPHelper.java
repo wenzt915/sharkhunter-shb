@@ -38,6 +38,10 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Helper class to handle the UPnP traffic that makes PMS discoverable by other clients.
+ * See http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf for the specifications.
+ */
 public class UPNPHelper {
 	private static final Logger logger = LoggerFactory.getLogger(UPNPHelper.class);
 	private final static String CRLF = "\r\n";
@@ -197,7 +201,8 @@ public class UPNPHelper {
 			public void run() {
 				while (true) {
 					try {
-						MulticastSocket socket = new MulticastSocket(1900);
+						// Use configurable source port as per http://code.google.com/p/ps3mediaserver/issues/detail?id=1166
+						MulticastSocket socket = new MulticastSocket(PMS.getConfiguration().getUpnpPort());
 						if (PMS.getConfiguration().getServerHostname() != null && PMS.getConfiguration().getServerHostname().length() > 0) {
 							logger.trace("Searching network interface for " + PMS.getConfiguration().getServerHostname());
 							NetworkInterface ni = NetworkInterface.getByInetAddress(InetAddress.getByName(PMS.getConfiguration().getServerHostname()));

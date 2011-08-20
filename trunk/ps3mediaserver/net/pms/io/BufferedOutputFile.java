@@ -28,13 +28,38 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import net.pms.PMS;
+import net.pms.io.WaitBufferedInputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Circular memory buffer that can be used as {@link java.io.OutputStream OutputStream} and
+ * provides methods that can read data from the memory buffer using an
+ * {@link java.io.InputStream InputStream}. The name of this class is a bit misleading, as
+ * there is typically no file involved in the process at all. Instead, the buffer is
+ * typically used to hold data piped by a transcoding process in one thread until a request
+ * for data comes in from another thread.
+ * 
+ * @see {@link ProcessWrapperImpl}, {@link net.pms.network.Request Request},
+ * {@link net.pms.network.RequestV2 RequestV2}
+ */
 public class BufferedOutputFile extends OutputStream {
 	private static final Logger logger = LoggerFactory.getLogger(BufferedOutputFile.class);
-	private static final int TEMP_SIZE = 50000000;
+	
+	/**
+	 * Initial size for the buffer in bytes.
+	 */
+	private static final int INITIAL_BUFFER_SIZE = 50000000;
+	
+	/**
+	 * Amount of extra bytes to increase the initial buffer with when memory allocation fails.
+	 */
+	private static final int BUFFER_INCREMENT = 500000;
+	private static final int MARGIN_LARGE = 20000000;
+	private static final int MARGIN_MEDIUM = 2000000;
+	private static final int MARGIN_SMALL = 600000;
+	
 	private static final int CHECK_INTERVAL = 500;
 	private static final int CHECK_END_OF_PROCESS = 2500; // must be superior to CHECK_INTERVAL
 	private int minMemorySize;
@@ -56,67 +81,27 @@ public class BufferedOutputFile extends OutputStream {
 	private double timeend;
 	private long packetpos = 0;
 
-	class WaitBufferedInputStream extends InputStream {
-		private BufferedOutputFile outputStream;
-		private long readCount;
-		private boolean firstRead;
-
-		WaitBufferedInputStream(BufferedOutputFile outputStream) {
-			this.outputStream = outputStream;
-			firstRead = true;
-		}
-
-		public int read() throws IOException {
-			int r = outputStream.read(firstRead, readCount);
-			if (r != -1) {
-				readCount++;
-			}
-			firstRead = false;
-			return r;
-		}
-
-		@Override
-		public int read(byte[] b, int off, int len) throws IOException {
-			int returned = outputStream.read(firstRead, readCount, b, off, len);
-			if (returned != -1) {
-				readCount += returned;
-			}
-			firstRead = false;
-			return returned;
-		}
-
-		@Override
-		public int read(byte[] b) throws IOException {
-			return read(b, 0, b.length);
-		}
-
-		public int available() throws IOException {
-			return (int) outputStream.writeCount;
-		}
-
-		public void close() throws IOException {
-			inputStreams.remove(this);
-			outputStream.detachInputStream();
-		}
-	}
-	
-	
 	/**
 	 * Try to increase the size of a memory buffer, while retaining its contents. The
 	 * provided new size is considered to be a request, it is scaled down when an
 	 * OutOfMemory error occurs. There is no guarantee about the exact length of the
 	 * returned byte array, only that it is greater than or equal to the original buffer
-	 * size.
+	 * size. When null is passed as an argument, a fresh buffer will be allocated.
 	 * Copying one byte array to another is a costly operation, both in memory usage
 	 * and performance. It is best to avoid using this method.
 	 * 
-	 * @param buffer The byte array to resize.
+	 * @param buffer The byte array to resize, null is allowed.
 	 * @param newSize The requested final size. Should be greater than the original size
 	 * or the original buffer will be returned. 
 	 * @return The resized byte array.
 	 */
 	private byte[] growBuffer(byte[] buffer, int newSize) {
 		byte[] copy;
+		
+		if (buffer == null) {
+			// Temporary empty array to avoid null tests in the code below
+			buffer = new byte[0];
+		}
 		
 		if (newSize <= buffer.length) {
 			// Cannot shrink the original
@@ -132,7 +117,10 @@ public class BufferedOutputFile extends OutputStream {
 			// Could not allocate the requested new size, use 30% of free memory instead.
 			// Rationale behind using 30%: multiple threads are running at the same time,
 			// we do not want one threads memory usage to suffocate the others.
-			int realisticSize = new Long(Runtime.getRuntime().freeMemory() * 3 / 10).intValue();
+			// Using maxMemory() to ignore the initial Java heap space size that freeMemory()
+			// takes into account.
+			// See http://javarevisited.blogspot.com/2011/05/java-heap-space-memory-size-jvm.html
+			int realisticSize = new Long(Runtime.getRuntime().maxMemory() * 3 / 10).intValue();
 			
 			if (realisticSize < buffer.length) {
 				// A copy would be smaller in size, shrinking instead of growing the buffer.
@@ -143,10 +131,11 @@ public class BufferedOutputFile extends OutputStream {
 					// Try to allocate the realistic alternative size
 					copy = new byte[realisticSize];
 				} catch (OutOfMemoryError e2) {
-					logger.debug("Cannot grow buffer size from " + buffer.length + " bytes to " + realisticSize + " bytes either."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-					logger.trace("freeMemory: " + Runtime.getRuntime().freeMemory()); //$NON-NLS-1$
-					logger.trace("totalMemory: " + Runtime.getRuntime().totalMemory()); //$NON-NLS-1$
-					logger.trace("maxMemory: " + Runtime.getRuntime().maxMemory()); //$NON-NLS-1$
+					logger.debug("Cannot grow buffer size from " + formatter.format(buffer.length) + " bytes to " //$NON-NLS-1$ //$NON-NLS-2$
+							+ formatter.format(realisticSize) + " bytes either."); //$NON-NLS-1$
+					logger.trace("freeMemory: " + formatter.format(Runtime.getRuntime().freeMemory())); //$NON-NLS-1$
+					logger.trace("totalMemory: " + formatter.format(Runtime.getRuntime().totalMemory())); //$NON-NLS-1$
+					logger.trace("maxMemory: " + formatter.format(Runtime.getRuntime().maxMemory())); //$NON-NLS-1$
 
 					// Cannot allocate memory, no other option than to return the original.
 					return buffer;
@@ -154,51 +143,46 @@ public class BufferedOutputFile extends OutputStream {
 			}
 		}
 
-		try {
-			System.arraycopy(buffer, 0, copy, 0, buffer.length);
-			logger.trace("Successfully grown buffer from " + buffer.length + " bytes to " + copy.length + " bytes."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-		} catch (NullPointerException npe) {
-			logger.trace("Cannot grow buffer size, error copying buffer contents."); //$NON-NLS-1$
+		if (buffer.length == 0) {
+			logger.trace("Successfully initialized buffer to " + formatter.format(copy.length) + " bytes."); //$NON-NLS-1$ //$NON-NLS-2$
+		} else {
+			try {
+				System.arraycopy(buffer, 0, copy, 0, buffer.length);
+				logger.trace("Successfully grown buffer from " + formatter.format(buffer.length) + " bytes to " //$NON-NLS-1$ //$NON-NLS-2$
+						+ formatter.format(copy.length) + " bytes.");  //$NON-NLS-1$
+			} catch (NullPointerException npe) {
+				logger.trace("Cannot grow buffer size, error copying buffer contents."); //$NON-NLS-1$
+			}
 		}
 
 		return copy;
 	}
 	
-	
+	/**
+	 * Constructor to create a memory buffer based on settings that are passed on. Will also
+	 * start up a timer task to display buffer size and usage in the PMS main screen.
+	 * 
+	 * @param params {@link OutputParams} object that contains preferences for the buffers
+	 * 				dimensions and behavior.
+	 */
 	public BufferedOutputFile(OutputParams params) {
 		this.minMemorySize = (int) (1048576 * params.minBufferSize);
 		this.maxMemorySize = (int) (1048576 * params.maxBufferSize);
 
-		// Sanity check for memory allocations: determine 30% of free memory
-		// Rationale behind using 30%: multiple threads are running at the same time,
-		// we do not want one threads memory usage to suffocate the others.
-		int realisticMemorySize = new Long(Runtime.getRuntime().freeMemory() * 3 / 10).intValue();
-		
-		if (realisticMemorySize < TEMP_SIZE) {
-			// FIXME: The rest of the code expects maxMemorySize > TEMP_SIZE, plus TEMP_SIZE is
-			// used as a marker value. We'll have to rewrite that code some day, but for now assign
-			// some random value that respects the current code.
-			logger.debug("Should allocate " + realisticMemorySize + " bytes realistically, forcing allocation of " //$NON-NLS-1$ //$NON-NLS-2$
-					+ (TEMP_SIZE + 500000) + " bytes instead."); //$NON-NLS-1$
-			realisticMemorySize = TEMP_SIZE + 500000;
-		}
-		
-		if (maxMemorySize > realisticMemorySize) {
-			logger.debug("Not enough memory to allocate " + maxMemorySize + " bytes, using " + realisticMemorySize + " bytes instead."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-
-			// Not enough memory free, make due with what is available
-			maxMemorySize = realisticMemorySize;
-			minMemorySize = realisticMemorySize / 2;
+		// Enforce the minimum transcoding buffer size
+		if (maxMemorySize < INITIAL_BUFFER_SIZE) {
+			maxMemorySize = INITIAL_BUFFER_SIZE;
+			minMemorySize = INITIAL_BUFFER_SIZE / 2;
 		}
 
 		// FIXME: Better to relate margin directly to maxMemorySize instead of using arbitrary fixed values
 
-		int margin = 20000000; // Issue 220: extends to 20Mb : readCount is wrongly set cause of the ps3's
+		int margin = MARGIN_LARGE; // Issue 220: extends to 20Mb : readCount is wrongly set cause of the ps3's
 		// 2nd request with a range like 44-xxx, causing the end of buffer margin to be first sent 
 		if (this.maxMemorySize < margin) {// for thumbnails / small buffer usage
-			margin = 2000000; // margin must be superior to the buffer size of OutputBufferConsumer or direct buffer size from WindowsNamedPipe class
+			margin = MARGIN_MEDIUM; // margin must be superior to the buffer size of OutputBufferConsumer or direct buffer size from WindowsNamedPipe class
 			if (this.maxMemorySize < margin) {
-				margin = 600000;
+				margin = MARGIN_SMALL;
 			}
 		}
 		this.bufferOverflowWarning = this.maxMemorySize - margin;
@@ -206,15 +190,19 @@ public class BufferedOutputFile extends OutputStream {
 		this.timeseek = params.timeseek;
 		this.timeend = params.timeend;
 		this.shiftScr = params.shift_scr;
-		try {
-			buffer = new byte[this.maxMemorySize < TEMP_SIZE ? this.maxMemorySize : TEMP_SIZE];
-		} catch (OutOfMemoryError ooe) {
+
+		// Allocate the buffer
+		buffer = growBuffer(null, maxMemorySize);
+
+		if (buffer.length == 0) {
+			// Cannot transcode without a buffer
 			logger.info("FATAL ERROR: OutOfMemory / dumping stats");
 			logger.trace("freeMemory: " + Runtime.getRuntime().freeMemory());
 			logger.trace("totalMemory: " + Runtime.getRuntime().totalMemory());
 			logger.trace("maxMemory: " + Runtime.getRuntime().maxMemory());
-			System.exit(1);
+			System.exit(1);			
 		}
+		
 		inputStreams = new ArrayList<WaitBufferedInputStream>();
 		timer = new Timer();
 		if (params.maxBufferSize > 15 && !params.hidebuffer) {
@@ -222,7 +210,7 @@ public class BufferedOutputFile extends OutputStream {
 				public void run() {
 					long rc = 0;
 					if (getCurrentInputStream() != null) {
-						rc = getCurrentInputStream().readCount;
+						rc = getCurrentInputStream().getReadCount();
 						PMS.get().getFrame().setReadValue(rc, "");
 					}
 					long space = (writeCount - rc);
@@ -253,7 +241,7 @@ public class BufferedOutputFile extends OutputStream {
 
 		return wai;
 	}
-
+	
 	public InputStream getInputStream(long newReadPosition) {
 		if (attachedThread != null) {
 			attachedThread.setReadyToStop(false);
@@ -284,7 +272,7 @@ public class BufferedOutputFile extends OutputStream {
 		}
 		if (newReadPosition > 0) {
 			logger.debug("Setting InputStream new position to: " + newReadPosition);
-			atominputStream.readCount = newReadPosition;
+			atominputStream.setReadCount(newReadPosition);
 		}
 		return atominputStream;
 	}
@@ -298,8 +286,12 @@ public class BufferedOutputFile extends OutputStream {
 			debugOutput.write(b, off, len);
 			debugOutput.flush();
 		}
+		
 		WaitBufferedInputStream input = getCurrentInputStream();
-		while ((input != null && (writeCount - input.readCount > bufferOverflowWarning)) || (input == null && writeCount > bufferOverflowWarning)) {
+
+		//logger.trace("write(" + b.length + ", " + off + ", " + len + "), writeCount = " + writeCount + ", readCount = " + (input != null ? input.getReadCount() : "null"));
+
+		while ((input != null && (writeCount - input.getReadCount() > bufferOverflowWarning)) || (input == null && writeCount > bufferOverflowWarning)) {
 			try {
 				Thread.sleep(CHECK_INTERVAL);
 			} catch (InterruptedException e) {
@@ -312,7 +304,7 @@ public class BufferedOutputFile extends OutputStream {
 			int mb = (int) (writeCount % maxMemorySize);
 
 			if (mb >= buffer.length - (len - off)) {
-				if (buffer.length == TEMP_SIZE) {
+				if (buffer.length == INITIAL_BUFFER_SIZE) {
 					// Initial buffer size was not big enough, try to increase it
 					buffer = growBuffer(buffer, maxMemorySize);
 				}
@@ -396,7 +388,7 @@ public class BufferedOutputFile extends OutputStream {
 	public void write(int b) throws IOException {
 		boolean bb = b % 100000 == 0;
 		WaitBufferedInputStream input = getCurrentInputStream();
-		while (bb && ((input != null && (writeCount - input.readCount > bufferOverflowWarning)) || (input == null && writeCount == bufferOverflowWarning))) {
+		while (bb && ((input != null && (writeCount - input.getReadCount() > bufferOverflowWarning)) || (input == null && writeCount == bufferOverflowWarning))) {
 			try {
 				Thread.sleep(CHECK_INTERVAL);
 				//logger.trace("BufferedOutputFile Full");
@@ -408,7 +400,7 @@ public class BufferedOutputFile extends OutputStream {
 		if (buffer != null) {
 			buffer[mb] = (byte) b;
 			buffered = true;
-			if (writeCount == TEMP_SIZE) {
+			if (writeCount == INITIAL_BUFFER_SIZE) {
 				buffer = growBuffer(buffer, maxMemorySize);
 			}
 
@@ -631,9 +623,9 @@ public class BufferedOutputFile extends OutputStream {
 		buffer[m0] = (byte) (pts_left_low & 255);
 	}
 
-	private int read(boolean firstRead, long readCount, byte buf[], int off, int len) {
-		if (readCount > TEMP_SIZE && readCount < maxMemorySize) {
-			int newMargin = maxMemorySize - 2000000;
+	protected int read(boolean firstRead, long readCount, byte buf[], int off, int len) {
+		if (readCount > INITIAL_BUFFER_SIZE && readCount < maxMemorySize) {
+			int newMargin = maxMemorySize - MARGIN_MEDIUM;
 			if (bufferOverflowWarning != newMargin) {
 				logger.debug("Setting margin to 2Mb");
 			}
@@ -685,9 +677,9 @@ public class BufferedOutputFile extends OutputStream {
 		}
 	}
 
-	private int read(boolean firstRead, long readCount) {
-		if (readCount > TEMP_SIZE && readCount < maxMemorySize) {
-			int newMargin = maxMemorySize - 2000000;
+	protected int read(boolean firstRead, long readCount) {
+		if (readCount > INITIAL_BUFFER_SIZE && readCount < maxMemorySize) {
+			int newMargin = maxMemorySize - MARGIN_MEDIUM;
 			if (bufferOverflowWarning != newMargin) {
 				logger.debug("Setting margin to 2Mb");
 			}
@@ -730,7 +722,11 @@ public class BufferedOutputFile extends OutputStream {
 		attachedThread = thread;
 	}
 
-	private void detachInputStream() {
+	protected void removeInputStream(WaitBufferedInputStream inputStream) {
+		inputStreams.remove(inputStream);
+	}
+	
+	protected void detachInputStream() {
 		PMS.get().getFrame().setReadValue(0, "");
 		if (attachedThread != null) {
 			attachedThread.setReadyToStop(true);

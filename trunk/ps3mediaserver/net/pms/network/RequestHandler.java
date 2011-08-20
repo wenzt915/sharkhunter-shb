@@ -18,16 +18,27 @@
  */
 package net.pms.network;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
 import net.pms.dlna.DLNAMediaInfo;
+import net.pms.dlna.DLNAResource;
 import net.pms.external.StartStopListenerDelegate;
 
 import org.slf4j.Logger;
@@ -46,6 +57,7 @@ public class RequestHandler implements Runnable {
 		this.br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 	}
 
+	
 	public void run() {
 		Request request = null;
 		StartStopListenerDelegate startStopListenerDelegate = new StartStopListenerDelegate(
@@ -55,10 +67,11 @@ public class RequestHandler implements Runnable {
 			logger.trace("Opened handler on socket " + socket);
 			PMS.get().getRegistry().disableGoToSleep();
 			int receivedContentLength = -1;
-			String headerLine = br.readLine();
 			boolean useragentfound = false;
 			String userAgentString = null;
-
+			DataInputStream in=new DataInputStream(socket.getInputStream());
+			String headerLine = br.readLine();
+			
 			while (headerLine != null && headerLine.length() > 0) {
 				logger.trace("Received on socket: " + headerLine);
 				if (!useragentfound && headerLine != null && headerLine.toUpperCase().startsWith("USER-AGENT") && request != null) {
@@ -125,8 +138,8 @@ public class RequestHandler implements Runnable {
 				} catch (Exception e) {
 					logger.error("Error in parsing HTTP headers", e);
 				}
-
 				headerLine = br.readLine();
+				
 			}
 
 			// if client not recognized, take a default renderer config
@@ -147,6 +160,39 @@ public class RequestHandler implements Runnable {
 					logger.trace("Recognized media renderer " + request.getMediaRenderer().getRendererName()); //$NON-NLS-1$
 				}
 			}
+			
+			if(request!=null) {
+				String method=request.getMethod();
+				String arg=request.getArgument();
+				if(arg!=null&&method!=null) {
+					if(method.equals("POST")&&arg.startsWith("0$")) {
+						String id = arg.substring(arg.indexOf("0$"), arg.lastIndexOf("/"));
+						id = id.replace("%24", "$"); // popcorn hour ?
+						String name=arg.substring(arg.lastIndexOf("/")+1);
+						DLNAResource res=PMS.get().getRootFolder(request.getMediaRenderer()).search(id);
+						if(res!=null) {
+							OutputStream out=res.upload(name);
+							if(out!=null) {
+								request.answer(output, startStopListenerDelegate);
+								DataInputStream in1=new DataInputStream(socket.getInputStream());
+								byte[] buf=new byte[4096];
+								int len;
+								while((len=in1.read(buf))!=-1) {
+									out.write(buf, 0, len);
+								}
+								out.flush();
+								out.close();
+							}
+							else { // some error occured here
+								output.write("HTTP/1.1 500 Interal Server Error\r\n".getBytes("UTF-8"));
+								output.flush();
+							}
+						}
+						output.close();
+						return;
+					}
+				}
+			}
 
 			if (receivedContentLength > 0) {
 				char buf[] = new char[receivedContentLength];
@@ -155,7 +201,8 @@ public class RequestHandler implements Runnable {
 					request.setTextContent(new String(buf));
 				}
 			}
-
+			
+			
 			if (request != null) {
 				logger.trace("HTTP: " + request.getArgument() + " / " + request.getLowRange() + "-" + request.getHighRange());
 			}
@@ -182,7 +229,7 @@ public class RequestHandler implements Runnable {
 			try {
 				PMS.get().getRegistry().reenableGoToSleep();
 				output.close();
-				br.close();
+				//br.close();
 				socket.close();
 			} catch (IOException e) {
 				logger.error("Error closing connection: ", e);
