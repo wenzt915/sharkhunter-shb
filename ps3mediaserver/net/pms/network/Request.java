@@ -221,6 +221,7 @@ public class Request extends HTTPResource {
 					if (inputStream != null) {
 						startStopListenerDelegate.start(dlna);
 					}
+					logger.trace("detect mimetype output");
 					output(output, "Content-Type: " + getRendererMimeType(dlna.mimeType(), mediaRenderer));
 					// Ditlew - org
 					//String name = dlna.getDisplayName();
@@ -518,8 +519,8 @@ public class Request extends HTTPResource {
 				response.append(CRLF);
 				//logger.trace(response.toString());
 			}
-		}
-
+		} 
+		
 		output(output, "Server: " + PMS.get().getServerName());
 
 		if (response.length() > 0) {

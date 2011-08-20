@@ -1,7 +1,7 @@
 <configuration debug="true">
   <!-- See http://logback.qos.ch/manual/index.html for more information -->
   <!-- on how to configure the Logback logging engine. -->
-  <!-- Available levels: TRACE < DEBUG < INFO <  WARN < ERROR -->
+  <!-- Available levels: ALL < TRACE < DEBUG < INFO < WARN < ERROR < OFF -->
 
   <define name="debugLogPath" class="net.pms.logging.DebugLogPathDefiner" />
 
@@ -19,7 +19,7 @@
   <appender name="debug.log" class="ch.qos.logback.core.FileAppender">
     <!-- only show event DEBUG and higher on the Console. -->
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>DEBUG</level>
+      <level>ALL</level>
     </filter>
     <file>${debugLogPath}${file.separator}debug.log</file>
     <append>false</append>  <!-- Start new debug.log on each application start -->

@@ -20,6 +20,7 @@ package net.pms.dlna;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.UnsupportedEncodingException;
@@ -470,7 +471,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		logger.trace("Searching for objectId: " + objectId + " with children option: " + children);
 		ArrayList<DLNAResource> resources = new ArrayList<DLNAResource>();
 		DLNAResource resource = search(objectId);
-
+		
 		if (resource != null) {
 			resource.defaultRenderer = renderer;
 
@@ -940,7 +941,9 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 				}
 				addAttribute(sb, "xmlns:dlna", "urn:schemas-dlna-org:metadata-1-0/");
 
+				logger.trace("detect mimetype output");
 				String mime = getRendererMimeType(mimeType(), mediaRenderer);
+				logger.trace("mime si "+mime);
 				if (mime == null) {
 					mime = "video/mpeg";
 				}
@@ -1169,33 +1172,39 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 			if (refCount == 0) {
 				final DLNAResource self = this;
 				Runnable r = new Runnable() {
-
 					public void run() {
 						logger.trace("StartStopListener: event:    start");
 						logger.trace("StartStopListener: renderer: " + rendererId);
 						logger.trace("StartStopListener: file:     " + getSystemName());
-						logger.trace("StartStopListener:");
-						for (ExternalListener listener : ExternalFactory.getExternalListeners()) {
+
+						for (final ExternalListener listener : ExternalFactory.getExternalListeners()) {
 							if (listener instanceof StartStopListener) {
-								((StartStopListener) listener).nowPlaying(media, self);
+								// run these asynchronously for slow handlers (e.g. logging, scrobbling) 
+								Runnable fireStartStopEvent = new Runnable() {
+									public void run() {
+										((StartStopListener) listener).nowPlaying(media, self);
+									}
+								};
+								new Thread(fireStartStopEvent).start();
 							}
 						}
 					}
 				};
+
 				new Thread(r).start();
 			}
 		}
 	}
 
 	/**
-	 * Plugin implementation. When this item is going to play, it will notify all the StartStopListener objects available.
+	 * Plugin implementation. When this item is going to stop playing, it will notify all the StartStopListener
+	 * objects available.
 	 * @see StartStopListener
 	 */
 	public void stopPlaying(final String rendererId) {
 		final DLNAResource self = this;
 		final String requestId = getRequestId(rendererId);
 		Runnable defer = new Runnable() {
-
 			public void run() {
 				try {
 					Thread.sleep(STOP_PLAYING_DELAY);
@@ -1210,25 +1219,32 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 					requestIdToRefcount.put(requestId, refCount - 1);
 
 					Runnable r = new Runnable() {
-
 						public void run() {
 							if (refCount == 1) {
 								logger.trace("StartStopListener: event:    stop");
 								logger.trace("StartStopListener: renderer: " + rendererId);
 								logger.trace("StartStopListener: file:     " + getSystemName());
-								logger.trace("StartStopListener:");
-								for (ExternalListener listener : ExternalFactory.getExternalListeners()) {
+
+								for (final ExternalListener listener : ExternalFactory.getExternalListeners()) {
 									if (listener instanceof StartStopListener) {
-										((StartStopListener) listener).donePlaying(media, self);
+										// run these asynchronously for slow handlers (e.g. logging, scrobbling) 
+										Runnable fireStartStopEvent = new Runnable() {
+											public void run() {
+												((StartStopListener) listener).donePlaying(media, self);
+											}
+										};
+										new Thread(fireStartStopEvent).start();
 									}
 								}
 							}
 						}
 					};
+
 					new Thread(r).start();
 				}
 			}
 		};
+
 		new Thread(defer).start();
 	}
 
@@ -1458,7 +1474,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 	public boolean allowScan() {
 		return false;
 	}
-	
+
 	public void discoverChildren(String str) {
 		discoverChildren();
 	}
@@ -1505,5 +1521,13 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		if(pl!=null)
 			player=pl;
 		toString(newRender);
+	}
+	
+	public OutputStream upload(String name) {
+		return null;
+	}
+	
+	public RendererConfiguration getDefaultRenderer() {
+		return defaultRenderer;
 	}
 }

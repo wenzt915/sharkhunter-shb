@@ -448,7 +448,7 @@ public class RendererConfiguration {
 			if (mimetype != null && mimetype.equals(HTTPResource.VIDEO_TRANSCODE)) {
 				logger.trace("render "+toString()+" match mime "+mimetype);
 				mimetype = getFormatConfiguration().match(FormatConfiguration.MPEGPS, FormatConfiguration.MPEG2, FormatConfiguration.AC3);
-				logger.trace("matched mime "+mimetype);
+				logger.trace("matched mime "+mimetype+" trans "+isTranscodeToWMV());
 				if (isTranscodeToMPEGTSAC3()) {
 					mimetype = getFormatConfiguration().match(FormatConfiguration.MPEGTS, FormatConfiguration.MPEG2, FormatConfiguration.AC3);
 				} else if (isTranscodeToWMV()) {
@@ -469,6 +469,7 @@ public class RendererConfiguration {
 					mimetype = getFormatConfiguration().match(FormatConfiguration.MP3, null, null);
 				}
 			}
+			logger.trace("mime out "+mimetype);
 			return mimetype;
 		}
 		if (mimetype != null && mimetype.equals(HTTPResource.VIDEO_TRANSCODE)) {
