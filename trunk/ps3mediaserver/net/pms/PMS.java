@@ -32,6 +32,7 @@ import java.io.PrintStream;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,6 +93,8 @@ import net.pms.network.UPNPHelper;
 import net.pms.newgui.GeneralTab;
 import net.pms.newgui.LooksFrame;
 import net.pms.newgui.ProfileChooser;
+import net.pms.remote.RemoteClient;
+import net.pms.remote.RemoteServer;
 import net.pms.update.AutoUpdater;
 import net.pms.util.PMSUtil;
 import net.pms.util.ProcessUtil;
@@ -117,7 +120,7 @@ public class PMS {
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
 
-	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB20"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB21"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -325,6 +328,8 @@ public class PMS {
 	public synchronized DLNAMediaDatabase getDatabase() {
 		return database;
 	}
+	
+	private RemoteClient remClient;
 
 	/**Initialisation procedure for PMS.
 	 * @return true if the server has been initialized correctly. false if the server could
@@ -349,6 +354,12 @@ public class PMS {
 			System.out.println("Switching to console mode"); //$NON-NLS-1$
 			frame = new DummyFrame();
 		}
+		
+		remClient = null;
+		if(configuration.getRemoteClient()) {
+			remClient=new RemoteClient(configuration.getRemotePort());
+			remClient.start();
+		}
 
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 		proxy = -1;
@@ -368,8 +379,10 @@ public class PMS {
 
 		logger.info("Temp folder: " + configuration.getTempFolder()); //$NON-NLS-1$
 		logger.info("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath()); //$NON-NLS-1$
-
+		
 		HashMap<String, String> lfps = LoggingConfigFileLoader.getLogFilePaths();
+		
+		RemoteServer.parse();
 
 		if (lfps != null && lfps.size() > 0) {
 			if (lfps.size() == 1) {
@@ -1045,5 +1058,16 @@ public class PMS {
 		out.close();
 	}
 	
+	public String remap(Socket s,String msg) {
+		if((remClient==null)||(s==null))
+			return msg;
+		return remClient.reMap(s, msg);
+	}
+
+	public void setBitrate(RendererConfiguration r,Socket s) {
+		if((remClient==null)||(s==null)||(r==null))
+			return;
+		remClient.setBitRate(r,s);
+	}
 }
 

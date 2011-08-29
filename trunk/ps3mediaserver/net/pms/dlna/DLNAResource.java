@@ -1491,6 +1491,8 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		player=p;
 	}
 	
+	
+	
 	public void updateRender(RendererConfiguration newRender) {
 		defaultRenderer=newRender;
 		Player pl = null;

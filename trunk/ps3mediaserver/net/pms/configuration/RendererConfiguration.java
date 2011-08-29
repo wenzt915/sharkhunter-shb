@@ -688,4 +688,8 @@ public class RendererConfiguration {
 		
 		return getBoolean(DLNA_TREE_HACK, false) && MediaInfoParser.isValid();
 	}
+	
+	public void setMaxVideoBitrate(String rate) {
+		configuration.addProperty(MAX_VIDEO_BITRATE, "("+rate+")");
+	}
 }

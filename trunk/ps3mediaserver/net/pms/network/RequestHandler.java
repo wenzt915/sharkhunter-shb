@@ -139,7 +139,6 @@ public class RequestHandler implements Runnable {
 					logger.error("Error in parsing HTTP headers", e);
 				}
 				headerLine = br.readLine();
-				
 			}
 
 			// if client not recognized, take a default renderer config
@@ -160,6 +159,9 @@ public class RequestHandler implements Runnable {
 					logger.trace("Recognized media renderer " + request.getMediaRenderer().getRendererName()); //$NON-NLS-1$
 				}
 			}
+			
+			if(request!=null)
+				request.setReMap(socket);
 			
 			if(request!=null) {
 				String method=request.getMethod();

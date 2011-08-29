@@ -1458,4 +1458,15 @@ public class PmsConfiguration {
 	public int getUpnpPort() {
 		return getInt(KEY_UPNP_PORT, 1900);
 	}
+	
+	private static final String KEY_REMOTE_CLIENT="remote_client";
+	private static final String KEY_REMOTE_PORT="remote_port";
+	
+	public boolean getRemoteClient() {
+		return getBoolean(KEY_REMOTE_CLIENT,false);
+	}
+	
+	public int getRemotePort() {
+		return getInt(KEY_REMOTE_PORT,0);
+	}
 }
