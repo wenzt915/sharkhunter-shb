@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 
 public class RemoteServer implements Runnable {
 	
+	public final static String DEFAULT_USER_AGENT="PMS";
+	
 	public static ArrayList<RemoteServer> parse() throws Exception {
 		ArrayList<RemoteServer> res=new ArrayList<RemoteServer>();
 		File f=new File((String) PMS.getConfiguration().getProfileDirectory()+File.separator+"PMS.srv");
@@ -47,7 +49,7 @@ public class RemoteServer implements Runnable {
 				if(srv==null) // error, but we are nice skip this
 					continue;
 				logger.debug("add "+srv.toString());
-		//		srv.start();
+				srv.start();
 				res.add(srv);
 				srv=null;
 			}
@@ -63,6 +65,8 @@ public class RemoteServer implements Runnable {
 				srv.setUser(str.substring(5));
 			if(str.startsWith("pwd="))
 				srv.setPwd(str.substring(4));
+			if(str.startsWith("ua="))
+				srv.setUA(str.substring(3));
 		}
 		return res;
 	}
@@ -71,6 +75,7 @@ public class RemoteServer implements Runnable {
 	private String usr;
 	private String pwd;
 	private String addr;
+	private String ua;
 	private int port;
 	private MessageDigest md5;
 	private Thread t;
@@ -81,6 +86,7 @@ public class RemoteServer implements Runnable {
 	
 	public RemoteServer() throws NoSuchAlgorithmException {
 		port=7890;
+		ua=DEFAULT_USER_AGENT;
 		md5 = MessageDigest.getInstance("MD5");
 	}
 	
@@ -114,6 +120,10 @@ public class RemoteServer implements Runnable {
 		}
 	}
 	
+	public void setUA(String s) {
+		ua=s;
+	}
+	
 	public String getDispName() {
 		return name;
 	}
@@ -121,6 +131,7 @@ public class RemoteServer implements Runnable {
 	private void authenticate() {
 		if(usr!=null&&pwd!=null) {
 			String authStr=addr+":"+String.valueOf(port)+","+usr+",";
+			String speed=",true";
 			try {
 				byte[] op=RemoteCommon.intToByteArray(3);
 				byte[] size=new byte[4];
@@ -134,7 +145,7 @@ public class RemoteServer implements Runnable {
 				logger.debug("read salt "+new String(salt));
 				String saltStr=pwd+new String(salt);
 				byte[] digest=md5.digest(saltStr.getBytes());
-				String realAuth=authStr+RemoteCommon.toHex(digest);
+				String realAuth=authStr+RemoteCommon.toHex(digest)+speed;
 				byte[] outLen=RemoteCommon.intToByteArray(realAuth.length());
 				sock.getOutputStream().write(op);
 				sock.getOutputStream().write(outLen);
@@ -191,9 +202,11 @@ public class RemoteServer implements Runnable {
 		uc.setRequestProperty("Content-Type","text/xml; charset=\"utf-8\"");
 		uc.setRequestProperty("Content-Length",String.valueOf(msg.length()));
 		uc.setRequestProperty("SOAPACTION",action);
+		uc.setRequestProperty("User-Agent", ua);
 		uc.setDoOutput(true);   
 		uc.setDoInput(true);
 		
+		logger.trace("send "+msg);
 		uc.connect();
 		DataOutputStream output = new DataOutputStream(uc.getOutputStream());
 		output.writeBytes(msg);   
@@ -203,12 +216,14 @@ public class RemoteServer implements Runnable {
 		BufferedReader in = new BufferedReader(new InputStreamReader(uc.getInputStream()));
 		StringBuilder page=new StringBuilder();
 		String str;
+		logger.trace("start read");
 		while ((str = in.readLine()) != null) {
 			//	page.append("\n");
 			page.append(str.trim());
 			page.append("\n");
 		}
 		in.close();
+		logger.trace("got out "+page.toString());
 		return page.toString();
 	}
 

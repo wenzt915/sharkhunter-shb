@@ -1,11 +1,11 @@
 package net.pms.remote;
 
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.pms.dlna.virtual.VirtualFolder;
-import net.pms.xmlwise.Plist;
 import net.pms.xmlwise.XmlElement;
 import net.pms.xmlwise.Xmlwise;
 
@@ -15,6 +15,8 @@ public class RemoteFolder extends VirtualFolder {
 	
 	private String id;
 	private RemoteServer server;
+	
+	private static final Logger logger = LoggerFactory.getLogger(RemoteFolder.class);
 	
 	public RemoteFolder(RemoteServer srv,String id,String name,String thumb) {
 		super(name,thumb);
@@ -70,7 +72,9 @@ public class RemoteFolder extends VirtualFolder {
 		try {
 			String raw=server.dlnaAction(browse,
 					"\"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"");
-			XmlElement top=Xmlwise.createXml(raw);
+			String res=getEnclosingValue(raw,"<Result>","</Result>");
+			res=res.replaceAll("&lt;", "<").replaceAll("&gt;", ">");
+			XmlElement top=Xmlwise.createXml(res);
 			List<XmlElement> l=top.get("container");
 			for(XmlElement e:l) {
 				String id=e.getAttribute("id");
@@ -82,17 +86,28 @@ public class RemoteFolder extends VirtualFolder {
 			List<XmlElement> l1=top.get("item");
 			for(XmlElement e:l1) {
 				String name=getVal(e,"dc:title");
-				XmlElement res=e.getUnique("res");
-				String streamUrl=res.getValue();
+				XmlElement result=e.getUnique("res");
+				String streamUrl=result.getValue();
 				String albumArt=getVal(e,"upnp:albumArtURI");
 				String artist=getVal(e,"upnp:artist");
 				String album=getVal(e,"upnp:album");
-				/*RemoteItem item=new RemoteItem(streamUrl,name,albumArt);
-				addChild(item);*/
+				RemoteItem item=new RemoteItem(streamUrl,name,albumArt);
+				addChild(item);
 			}
 		}
 		catch (Exception e) {
+			logger.trace("xml exception "+e);
 		}
+	}
+	
+	private String getEnclosingValue(String content, String leftTag, String rightTag) {
+		String result = null;
+		int leftTagPos = content.indexOf(leftTag);
+		int rightTagPos = content.indexOf(rightTag, leftTagPos + 1);
+		if (leftTagPos > -1 && rightTagPos > leftTagPos) {
+			result = content.substring(leftTagPos + leftTag.length(), rightTagPos);
+		}
+		return result;
 	}
 
 }
