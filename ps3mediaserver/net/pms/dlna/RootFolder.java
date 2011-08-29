@@ -49,6 +49,8 @@ import net.pms.external.ExternalFactory;
 import net.pms.external.ExternalListener;
 import net.pms.gui.IFrame;
 import net.pms.newgui.LooksFrame;
+import net.pms.remote.RemoteFolder;
+import net.pms.remote.RemoteServer;
 import net.pms.xmlwise.Plist;
 import net.pms.xmlwise.XmlParseException;
 
@@ -151,6 +153,17 @@ public class RootFolder extends DLNAResource {
 		
 		lim=new FolderLimit();
 		addChild(lim);
+		
+		ArrayList<RemoteServer> srv;
+		try {
+			srv = RemoteServer.parse();
+			for(int i=0;i<srv.size();i++) {
+				RemoteServer s=srv.get(i);
+				addChild(new RemoteFolder(s,"0",s.getDispName(),null));
+			}
+		} catch (Exception e) {
+		}
+		
 		
 		discovered = true;
 	}

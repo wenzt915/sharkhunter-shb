@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -217,11 +218,11 @@ public class Request extends HTTPResource {
 					dlna = files.get(0);
 					if(owner!=null)
 						dlna.updateRender(mediaRenderer);
+					PMS.get().setBitrate(mediaRenderer,remap);
 					inputStream = dlna.getInputStream(lowRange, highRange, timeseek, mediaRenderer);
 					if (inputStream != null) {
 						startStopListenerDelegate.start(dlna);
 					}
-					logger.trace("detect mimetype output");
 					output(output, "Content-Type: " + getRendererMimeType(dlna.mimeType(), mediaRenderer));
 					// Ditlew - org
 					//String name = dlna.getDisplayName();
@@ -286,6 +287,7 @@ public class Request extends HTTPResource {
 				s = s.replace("uuid:1234567890TOTO", PMS.get().usn());//.substring(0, PMS.get().usn().length()-2));
 				s = s.replace("<host>", PMS.get().getServer().getHost());
 				s = s.replace("<port>", "" + PMS.get().getServer().getPort());
+				s = PMS.get().remap(remap,s);
 				if (xbox) {
 					logger.debug("DLNA changes for Xbox360");
 					s = s.replace("PS3 Media Server", "PS3 Media Server [" + profileName + "] : Windows Media Connect");
@@ -517,14 +519,16 @@ public class Request extends HTTPResource {
 				response.append(CRLF);
 				response.append(HTTPXMLHelper.SOAP_ENCODING_FOOTER);
 				response.append(CRLF);
-				//logger.trace(response.toString());
+				logger.trace(response.toString());
 			}
 		} 
 		
 		output(output, "Server: " + PMS.get().getServerName());
 
 		if (response.length() > 0) {
-			byte responseData[] = response.toString().getBytes("UTF-8");
+			String data=PMS.get().remap(remap, response.toString());
+			//byte responseData[] = response.toString().getBytes("UTF-8");
+			byte responseData[] = data.getBytes("UTF-8");
 			output(output, "Content-Length: " + responseData.length);
 			output(output, "");
 			if (!method.equals("HEAD")) {
@@ -572,6 +576,7 @@ public class Request extends HTTPResource {
 	}
 
 	private void output(OutputStream output, String line) throws IOException {
+		line=PMS.get().remap(remap,line);
 		output.write((line + CRLF).getBytes("UTF-8"));
 		logger.trace("Wrote on socket: " + line);
 	}
@@ -608,4 +613,11 @@ public class Request extends HTTPResource {
 		}
 		return result;
 	}
+	
+	private Socket remap;
+	
+	public void setReMap(Socket s) {
+		remap=s;
+	}
+	
 }
