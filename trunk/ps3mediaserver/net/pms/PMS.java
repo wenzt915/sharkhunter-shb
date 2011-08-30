@@ -120,7 +120,7 @@ public class PMS {
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
 
-	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB21"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB22"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -381,8 +381,6 @@ public class PMS {
 		logger.info("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath()); //$NON-NLS-1$
 		
 		HashMap<String, String> lfps = LoggingConfigFileLoader.getLogFilePaths();
-		
-		RemoteServer.parse();
 
 		if (lfps != null && lfps.size() > 0) {
 			if (lfps.size() == 1) {
