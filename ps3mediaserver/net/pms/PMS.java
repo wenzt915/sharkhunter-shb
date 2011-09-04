@@ -120,7 +120,7 @@ public class PMS {
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
 
-	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB22"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB23"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -354,12 +354,6 @@ public class PMS {
 			System.out.println("Switching to console mode"); //$NON-NLS-1$
 			frame = new DummyFrame();
 		}
-		
-		remClient = null;
-		if(configuration.getRemoteClient()) {
-			remClient=new RemoteClient(configuration.getRemotePort());
-			remClient.start();
-		}
 
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 		proxy = -1;
@@ -419,6 +413,12 @@ public class PMS {
 
 		logger.info("Profile name: " + configuration.getProfileName()); //$NON-NLS-1$
 		logger.info(""); //$NON-NLS-1$
+		
+		remClient = null;
+		if(configuration.getRemoteClient()) {
+			remClient=new RemoteClient(configuration.getRemotePort());
+			remClient.start();
+		}
 
 		RendererConfiguration.loadRendererConfigurations();
 
