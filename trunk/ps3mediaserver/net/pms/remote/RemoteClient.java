@@ -55,6 +55,7 @@ public class RemoteClient extends Thread {
 		try {
 			if(port==0)
 				port=DEFAULT_PORT;
+			logger.info("Starting remote client on port "+port);
 			sock=new ServerSocket(port);
 			clients=new ArrayList<ClientData>();
 			doAuth=true;
@@ -74,6 +75,7 @@ public class RemoteClient extends Thread {
 				}
 			}, DELAY,PERIOD);
 		} catch (Exception e) {
+			logger.error("remote client start error "+e);
 		}
 	}
 	
@@ -249,6 +251,7 @@ public class RemoteClient extends Thread {
 			}
 			catch (Exception e) {
 				logger.trace("oops "+e);
+				return;
 			}
 		}
 	}

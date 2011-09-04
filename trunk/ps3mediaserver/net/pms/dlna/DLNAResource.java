@@ -322,7 +322,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 						pl = PMS.get().getPlayer(child.ext.getProfiles().get(i), child.ext);
 						i++;
 					}
-					
+				
 					// Next, try to match a player based on the name of the DLNAResource.
 					// When a match is found it overrules the result of the first try.
 					String name = getName();
@@ -345,13 +345,13 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 						}
 					}
 				}
+				
 
 				if (pl != null && !allChildrenAreFolders) {
 					boolean forceTranscode = false;
 					if (child.ext != null) {
 						forceTranscode = child.ext.skip(PMS.getConfiguration().getForceTranscode(), defaultRenderer != null ? defaultRenderer.getTranscodedExtensions() : null);
 					}
-
 					boolean hasEmbeddedSubs = false;
 					if (child.media != null) {
 						for(DLNAMediaSubtitle s:child.media.subtitlesCodes) {
@@ -941,9 +941,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 				}
 				addAttribute(sb, "xmlns:dlna", "urn:schemas-dlna-org:metadata-1-0/");
 
-				logger.trace("detect mimetype output");
 				String mime = getRendererMimeType(mimeType(), mediaRenderer);
-				logger.trace("mime si "+mime);
 				if (mime == null) {
 					mime = "video/mpeg";
 				}
