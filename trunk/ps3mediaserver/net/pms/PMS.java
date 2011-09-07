@@ -119,8 +119,7 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-
-	public static final String VERSION = "(SharkHunter Build) 1.31.0 - SHB23"; //$NON-NLS-1$
+	public static final String VERSION = "(SharkHunter Build) 1.40.0 - SHB24"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -174,7 +173,7 @@ public class PMS {
 	public void setRendererfound(RendererConfiguration mediarenderer) {
 		if (!foundRenderers.contains(mediarenderer) && !mediarenderer.isFDSSDP()) {
 			foundRenderers.add(mediarenderer);
-			frame.addRendererIcon(mediarenderer.getRank(), mediarenderer.getRendererNameWithAddress(), mediarenderer.getRendererIcon());
+			frame.addRendererIcon(mediarenderer.getRank(), mediarenderer.getRendererName(), mediarenderer.getRendererIcon());
 			if (mediarenderer.isPS3()) {
 				frame.setStatusCode(0, Messages.getString("PMS.5"), "clients/ps3slim_220.png"); //$NON-NLS-1$ //$NON-NLS-2$
 			}
@@ -1006,6 +1005,12 @@ public class PMS {
 		}
 	}
 
+	/**
+	 * Retrieves the {@link net.pms.configuration.PmsConfiguration PmsConfiguration} object
+	 * that contains all configured settings for PMS. The object provides getters for all
+	 * configurable PMS settings.
+	 * @return The configuration object
+	 */
 	public static PmsConfiguration getConfiguration() {
 		return configuration;
 	}

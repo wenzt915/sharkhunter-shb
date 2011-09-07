@@ -107,11 +107,13 @@ public class RootFolder extends DLNAResource {
 			return;
 		}
 		
-		for (DLNAResource r : getConfiguredFolders()) {
-			addChild(r);
-		}
-		for (DLNAResource r : getVirtualFolders()) {
-			addChild(r);
+		if(!configuration.getNoFolders()) {
+			for (DLNAResource r : getConfiguredFolders()) {
+				addChild(r);
+			}
+			for (DLNAResource r : getVirtualFolders()) {
+				addChild(r);
+			}
 		}
 		File webConf = new File(configuration.getProfileDirectory(), "WEB.conf"); //$NON-NLS-1$
 		if (webConf.exists()) {
@@ -151,8 +153,10 @@ public class RootFolder extends DLNAResource {
 			}
 		}
 		
-		lim=new FolderLimit();
-		addChild(lim);
+		if(configuration.getFolderLimit()) {
+			lim=new FolderLimit();
+			addChild(lim);
+		}
 		
 		ArrayList<RemoteServer> srv;
 		try {

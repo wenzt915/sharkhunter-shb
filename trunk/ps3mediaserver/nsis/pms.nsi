@@ -13,8 +13,8 @@ VIAddVersionKey "CompanyName" "A. Brochard"
 VIAddVersionKey "LegalTrademarks" ""
 VIAddVersionKey "LegalCopyright" ""
 VIAddVersionKey "FileDescription" "PS3 Media Server"
-VIAddVersionKey "FileVersion" "1.31.0"
-VIProductVersion "1.31.0.0"
+VIAddVersionKey "FileVersion" "1.40.0"
+VIProductVersion "1.40.0.0"
 
  
 !define JARPATH "pms.jar"
@@ -24,8 +24,8 @@ VIProductVersion "1.31.0.0"
  
 ; Definitions for Java 6.0
 !define JRE_VERSION "6.0"
-!define JRE_URL "http://javadl.sun.com/webapps/download/AutoDL?BundleId=49024"
-!define JRE64_URL "http://javadl.sun.com/webapps/download/AutoDL?BundleId=49026"
+!define JRE_URL "http://download.oracle.com/otn-pub/java/jdk/6u27-b07/jre-6u27-windows-i586.exe"
+!define JRE64_URL "http://download.oracle.com/otn-pub/java/jdk/6u27-b07/jre-6u27-windows-x64.exe"
  
 ; use javaw.exe to avoid dosbox.
 ; use java.exe to keep stdout/stderr
