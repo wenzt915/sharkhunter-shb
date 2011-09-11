@@ -1671,7 +1671,8 @@ public class PmsConfiguration {
 				HOSTNAME = "unknown host";
 			}
 		}
-
+		if(Build.getShortName()!=null)
+			return getString(KEY_PROFILE_NAME, HOSTNAME+"/"+Build.getShortName());
 		return getString(KEY_PROFILE_NAME, HOSTNAME);
 	}
 
