@@ -119,7 +119,8 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static final String VERSION = "(SharkHunter Build) 1.40.0 - SHB24"; //$NON-NLS-1$
+	//public static final String VERSION = "1.40.0"; //$NON-NLS-1$
+	public static String VERSION = "1.40.0"; //$NON-NLS-1$
 	public static final String AVS_SEPARATOR = "\1"; //$NON-NLS-1$
 
 	// (innot): The logger used for all logging.
@@ -336,6 +337,7 @@ public class PMS {
 	 * @throws Exception
 	 */
 	private boolean init() throws Exception {
+		setVersion();
 		AutoUpdater autoUpdater = null;
 
 		if (Build.isUpdatable()) {
@@ -1071,6 +1073,16 @@ public class PMS {
 		if((remClient==null)||(s==null)||(r==null))
 			return;
 		remClient.setBitRate(r,s);
+	}
+	
+	private void setVersion() {
+		String res="";
+		if(Build.getName()!=null)
+			res="("+Build.getName()+") ";
+		res=res+VERSION;
+		if(Build.getShortName()!=null)
+			res=res+" - "+Build.getShortName();
+		VERSION=res;
 	}
 }
 

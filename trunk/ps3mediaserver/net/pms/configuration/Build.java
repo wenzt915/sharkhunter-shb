@@ -45,6 +45,9 @@ public class Build {
 	 */
 
 	private static final String PROFILE_DIRECTORY_NAME = "PMS-SHB"; //$NON-NLS-1$
+	
+	private static final String BUILD_NAME="SHB25";
+	private static final String FULL_NAME="SharkHunter Build";
 
 	public static boolean isUpdatable() {
 		return IS_UPDATABLE && Platform.isWindows() && getUpdateServerURL() != null;
@@ -57,4 +60,13 @@ public class Build {
 	public static String getProfileDirectoryName() {
 		return PROFILE_DIRECTORY_NAME; 
 	}
+	
+	public static String getShortName() {
+		return BUILD_NAME;
+	}
+	
+	public static String getName() {
+		return FULL_NAME;
+	}
+	
 }
