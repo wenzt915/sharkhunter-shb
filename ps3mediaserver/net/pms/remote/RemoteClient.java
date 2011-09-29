@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
+import net.pms.dlna.RootFolder;
 import net.pms.network.RequestHandler;
 import net.pms.network.UPNPHelper;
 
@@ -42,6 +43,7 @@ public class RemoteClient extends Thread {
 	private int port;
 	
 	private HashMap<String,String> users;
+	private HashMap<String,String> groups;
 	private Random rand;
 	private MessageDigest md5;
 	private Timer timer;
@@ -61,6 +63,7 @@ public class RemoteClient extends Thread {
 			doAuth=true;
 			this.port=port;
 			users=new HashMap<String,String>();
+			groups=new HashMap<String,String>();
 			rand=new Random(System.currentTimeMillis());
 			md5 = MessageDigest.getInstance("MD5");
 			//doAuth=Boolean.getBoolean((String) PMS.getConfiguration().getCustomProperty("AUTH"));
@@ -101,6 +104,7 @@ public class RemoteClient extends Thread {
 				if(s2.length<2)
 					continue;
 				users.put(s2[0], s2[1]);
+				groups.put(s2[0], s1[1]);
 			}
 		}
     	catch (Exception e) {} 
@@ -169,6 +173,7 @@ public class RemoteClient extends Thread {
 		cd.first=true;
 		cd.rechallenge=RECHALLENGE_CNT;
 		cd.speed=0.0;
+		cd.root=null;
 		if(str.length>3) 
 			if(str[3].equalsIgnoreCase("true")) // no speed check
 				return cd;
@@ -305,6 +310,19 @@ public class RemoteClient extends Thread {
 		return msg.replaceAll(repStr, "http://"+cd.myPubAddr);
 	}
 	
+	public RootFolder getRoot(Socket s) {
+		ClientData cd=findClient(s);
+		if(cd==null)
+			return null;
+		if(cd.root==null) {
+			String group=groups.get(cd.user);
+			if(group==null||group.length()==0) // no group found say username is group
+				group=cd.user;
+			cd.root=new RootFolder(group);
+		}
+		return cd.root;
+	}
+	
 	public void setBitRate(RendererConfiguration r,Socket s) {
 		ClientData cd=findClient(s);
 		if(cd==null)
@@ -325,6 +343,7 @@ public class RemoteClient extends Thread {
 		public boolean first;
 		public int rechallenge;
 		public double speed;
+		public RootFolder root;
 	}
 
 }

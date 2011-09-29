@@ -128,7 +128,7 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 					if (!nums.startsWith("-") && !nums.endsWith("-")) {
 						request.setHighRange(Long.parseLong(st.nextToken()));
 					} else {
-						request.setHighRange(DLNAMediaInfo.TRANS_SIZE);
+						request.setHighRange(-1);
 					}
 				} else if (headerLine.toLowerCase().indexOf("transfermode.dlna.org:") > -1) {
 					request.setTransferMode(headerLine.substring(headerLine.toLowerCase().indexOf("transfermode.dlna.org:") + 22).trim());
@@ -167,18 +167,18 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 		if (request != null) {
 			if (request.getMediaRenderer() == null) {
 				request.setMediaRenderer(RendererConfiguration.getDefaultConf());
-				logger.trace("Using default media renderer " + request.getMediaRenderer().getRendererName()); //$NON-NLS-1$
+				logger.trace("Using default media renderer " + request.getMediaRenderer().getRendererName());
 				
-				if (userAgentString != null && !userAgentString.equals("FDSSDP")) { //$NON-NLS-1$
+				if (userAgentString != null && !userAgentString.equals("FDSSDP")) {
 					// we have found an unknown renderer
-					logger.info("Media renderer was not recognized. HTTP User-Agent: " + userAgentString); //$NON-NLS-1$
+					logger.info("Media renderer was not recognized. HTTP User-Agent: " + userAgentString);
 					PMS.get().setRendererfound(request.getMediaRenderer());
 				}
 			} else {
 				if (userAgentString != null) {
-					logger.trace("HTTP User-Agent: " + userAgentString); //$NON-NLS-1$
+					logger.trace("HTTP User-Agent: " + userAgentString);
 				}
-				logger.trace("Recognized media renderer " + request.getMediaRenderer().getRendererName()); //$NON-NLS-1$
+				logger.trace("Recognized media renderer " + request.getMediaRenderer().getRendererName());
 			}
 		}
 		
@@ -206,7 +206,7 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 
 		// Build the response object.
 		HttpResponse response = null;
-		if (request.getLowRange() > 0 || request.getHighRange() > 0) {
+		if (request.getLowRange() != 0 || request.getHighRange() != 0) {
 			response = new DefaultHttpResponse(
 				/*request.isHttp10() ? HttpVersion.HTTP_1_0
 				: */HttpVersion.HTTP_1_1,

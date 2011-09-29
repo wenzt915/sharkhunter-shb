@@ -20,7 +20,6 @@ package net.pms.formats;
 
 import java.util.ArrayList;
 
-import net.pms.PMS;
 import net.pms.encoders.Player;
 
 public class MP3 extends Format {
@@ -30,7 +29,7 @@ public class MP3 extends Format {
 
 	@Override
 	public String[] getId() {
-		return PMS.getConfiguration().getMp3FileExtensions();
+		return new String[]{"mp3", "wav"};
 	}
 
 	@Override

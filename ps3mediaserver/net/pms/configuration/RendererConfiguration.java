@@ -81,7 +81,7 @@ public class RendererConfiguration {
 
 	public RootFolder getRootFolder() {
 		if (rootFolder == null) {
-			rootFolder = new RootFolder();
+			rootFolder = new RootFolder(getRendererName());
 		}
 		return rootFolder;
 	}
@@ -105,9 +105,9 @@ public class RendererConfiguration {
 		String hostname = currentRendererAddress.getCanonicalHostName();
 
 		if (!ip.equals(hostname)) {
-			logger.info("Renderer " + this + " found on this address: " + hostname + " (" + ip + ")"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			logger.info("Renderer " + this + " found on this address: " + hostname + " (" + ip + ")");
 		} else {
-			logger.info("Renderer " + this + " found on this address: " + ip); //$NON-NLS-1$ //$NON-NLS-2$
+			logger.info("Renderer " + this + " found on this address: " + ip);
 		}
 
 		// let's get that speed
@@ -291,7 +291,11 @@ public class RendererConfiguration {
 	private static final String SUPPORTED = "Supported";
 	private static final String CUSTOM_MENCODER_QUALITYSETTINGS = "CustomMencoderQualitySettings";
 	private static final String DLNA_TREE_HACK = "CreateDLNATreeFaster";
+	private static final String CHUNKED_TRANSFER = "ChunkedTransfer";
 
+	// Sony devices require JPG thumbnails
+	private static final String FORCE_JPG_THUMBNAILS = "ForceJPGThumbnails";
+    	
 	// Ditlew
 	private static final String SHOW_DVD_TITLE_DURATION = "ShowDVDTitleDuration";
 	private static final String CBR_VIDEO_BITRATE = "CBRVideoBitrate";
@@ -529,9 +533,9 @@ public class RendererConfiguration {
 			String hostname = currentRendererAddress.getCanonicalHostName();
 
 			if (!ip.equals(hostname)) {
-				s = s + " [" + hostname + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				s = s + " [" + hostname + "]";
 			} else {
-				s = s + " [" + ip + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				s = s + " [" + ip + "]";
 			}
 		}
 		if (speedInMbits > 0) {
@@ -698,9 +702,17 @@ public class RendererConfiguration {
 		return getBoolean(MEDIAPARSERV2_THUMB, false) && MediaInfoParser.isValid();
 	}
 
+	public boolean isForceJPGThumbnails() {
+		return (getBoolean(FORCE_JPG_THUMBNAILS, false) && MediaInfoParser.isValid()) || isBRAVIA();
+	}
+
 	public boolean isDLNATreeHack() {
 		
 		return getBoolean(DLNA_TREE_HACK, false) && MediaInfoParser.isValid();
+	}
+	
+	public boolean isChunkedTransfer() {
+		return getBoolean(CHUNKED_TRANSFER, false);
 	}
 	
 	public void setMaxVideoBitrate(String rate) {
