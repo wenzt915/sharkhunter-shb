@@ -1,5 +1,7 @@
 package net.pms.dlna;
 
+import java.util.ArrayList;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,41 +9,51 @@ import net.pms.dlna.virtual.VirtualFolder;
 
 public class FolderLimit extends VirtualFolder {
 	private static final Logger logger = LoggerFactory.getLogger(FolderLimit.class);
-	private DLNAResource start;
+	private ArrayList<FolderLimitLevel> levels;
+	private boolean discover;
 	
 	public FolderLimit() {
 		super("Folder Limit",null);
-		start=null;
-	}
-	
-	private boolean inMe(DLNAResource res) {
-		while(res!=null) {
-			if(res instanceof FolderLimit) 
-				return true;
-			if(res instanceof RootFolder)
-				break;
-			res=res.getParent();
-		}
-		return false;
+		discover=false;
+		levels=new ArrayList<FolderLimitLevel>();
+		levels.add(new FolderLimitLevel(0)); // create level 0
 	}
 	
 	public void setStart(DLNAResource res) {
-		if(inMe(res))
+		if(discover)
 			return;
-		if(res.getParent()==null)
-			start=res;
-		else
-			start=res.getParent();
+		int level=-1;
+		DLNAResource tmp=res;
+		while(tmp!=null) {
+			if(tmp instanceof FolderLimit) // don't add ourself 
+				return;
+			if(tmp instanceof FolderLimitLevel) {
+				level=((FolderLimitLevel)tmp).level();
+				break;
+			}
+			tmp=tmp.getParent();
+		}
+		try {
+			FolderLimitLevel fll=levels.get(level+1);
+			fll.setStart(res);
+		}
+		catch (IndexOutOfBoundsException e) { // create new level
+			FolderLimitLevel fll=new FolderLimitLevel(level+1);
+			fll.setStart(res);
+			levels.add(fll);
+		}
 	}
 	
 	public void discoverChildren() {
-		if(start!=null)
-			addChild(start);
+		discover=true;
+		for(DLNAResource res : levels)
+			addChild(res);
+		discover=false;
 	}
 	
 	public void resolve() {
 		this.discovered=false;
-		this.childrenNumber=0;
 		this.children.clear();
+		this.childrenNumber=0;
 	}
 }

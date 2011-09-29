@@ -235,7 +235,7 @@ public class RequestV2 extends HTTPResource {
 		final boolean close,
 		final StartStopListenerDelegate startStopListenerDelegate) throws IOException {
 		ChannelFuture future = null;
-		long CLoverride = -1;
+		long CLoverride = -2; // 0 and above are valid Content-Length values, -1 means omit
 		StringBuilder response = new StringBuilder();
 		DLNAResource dlna = null;
 		boolean xbox = mediaRenderer.isXBOX();
@@ -300,62 +300,89 @@ public class RequestV2 extends HTTPResource {
 						dlna.updateRender(mediaRenderer);
 					// This is a request for a regular file.
 					inputStream = dlna.getInputStream(lowRange, highRange, timeseek, mediaRenderer);
-
-					if (inputStream != null) {
-						// Notify plugins that the DLNAresource is about to start playing
-						startStopListenerDelegate.start(dlna);
-					}
-
-					// Try to determine the content type of the file
-					String rendererMimeType = getRendererMimeType(files.get(0).mimeType(), mediaRenderer);
-					
-					if (rendererMimeType != null && !"".equals(rendererMimeType)) {
-						output.setHeader(HttpHeaders.Names.CONTENT_TYPE, rendererMimeType);
-					}
-					
 					String name = dlna.getDisplayName(mediaRenderer);
 
-					if (dlna.media != null) {
-						if (StringUtils.isNotBlank(dlna.media.container)) {
-							name += " [container: " + dlna.media.container + "]";
-						}
+					if (inputStream == null) {
+						// No inputStream indicates that transcoding / remuxing probably crashed.
+						logger.error("There is no inputstream to return for " + name);
+					} else {
+						// Notify plugins that the DLNAresource is about to start playing
+						startStopListenerDelegate.start(dlna);
 
-						if (StringUtils.isNotBlank(dlna.media.codecV)) {
-							name += " [video: " + dlna.media.codecV + "]";
+						// Try to determine the content type of the file
+						String rendererMimeType = getRendererMimeType(files.get(0).mimeType(), mediaRenderer);
+						
+						if (rendererMimeType != null && !"".equals(rendererMimeType)) {
+							output.setHeader(HttpHeaders.Names.CONTENT_TYPE, rendererMimeType);
 						}
+						
+						if (dlna.media != null) {
+							if (StringUtils.isNotBlank(dlna.media.container)) {
+								name += " [container: " + dlna.media.container + "]";
+							}
+	
+							if (StringUtils.isNotBlank(dlna.media.codecV)) {
+								name += " [video: " + dlna.media.codecV + "]";
+							}
+						}
+	
+						PMS.get().getFrame().setStatusLine("Serving " + name);
+	
+						// Response modes:
+						//   Default          - Content-Length refers to total media size.
+						//   Chunked          - Content-Length refers to chunk size.
+						// We use -1 for arithmetic convenience but don't send it as a value. 
+						// If Content-Length < 0 we omit it, for Content-Range we use '*' to signify unspecified.
+						
+						boolean chunked = mediaRenderer.isChunkedTransfer();
+						
+						// Determine the total size. Note: when transcoding the length is
+						// not known in advance, so DLNAMediaInfo.TRANS_SIZE will be returned instead.
+						
+						long totalsize = files.get(0).length(mediaRenderer);
+						
+						if (chunked && totalsize == DLNAMediaInfo.TRANS_SIZE) {
+							// In chunked mode we try to avoid arbitrary values.
+							totalsize = -1;
+						}
+	
+						long available = inputStream.available();
+						
+						// Determine the current chunk's Content-Length
+						if (chunked) {
+							long requested = highRange - lowRange;
+							if (requested < 0) {
+								// In chunked mode when request is open-ended and totalsize is unknown
+								// we omit Content-Length.
+								CLoverride = (totalsize > 0 ? available : -1);
+							} else {
+								requested += (requested > 0 ? 1 : 0);
+								// In chunked mode Content-Length is never more than requested.
+								CLoverride = (available < requested ? available : requested);
+							}
+						} else {
+							CLoverride = available;
+						}
+	
+						// Calculate the corresponding highRange (this is usually redundant).
+						highRange = lowRange + CLoverride - (CLoverride > 0 ? 1 : 0);
+	
+						if (!chunked) {
+							CLoverride = totalsize;
+						}
+						
+						logger.trace((chunked ? "Using chunked response. " : "")  + "Available Content-Length: " + available);
+	
+						output.setHeader(HttpHeaders.Names.CONTENT_RANGE, "bytes " + lowRange + "-" 
+							+ (highRange > -1 ? highRange : "*") + "/" + (totalsize > -1 ? totalsize : "*"));
+	
+						if (contentFeatures != null) {
+							output.setHeader("ContentFeatures.DLNA.ORG", files.get(0).getDlnaContentFeatures());
+						}
+	
+						output.setHeader(HttpHeaders.Names.ACCEPT_RANGES, "bytes");
+						output.setHeader(HttpHeaders.Names.CONNECTION, "keep-alive");
 					}
-
-					PMS.get().getFrame().setStatusLine("Serving " + name);
-
-					// Determine the total size and Content-Length override. Note: when transcoding the length is
-					// not known in advance, so DLNAMediaInfo.TRANS_SIZE will be returned instead.
-					CLoverride = files.get(0).length(mediaRenderer);
-					if (lowRange > 0 || highRange > 0) {
-						long totalsize = CLoverride;
-
-						if (highRange >= CLoverride) {
-							highRange = CLoverride - 1;
-						}
-
-						if (CLoverride == -1) {
-							// FIXME: Not sure this will ever happen because DLNAResources usually return a length > -1.
-							lowRange = 0;
-							totalsize = inputStream.available();
-							highRange = totalsize - 1;
-						}
-
-						output.setHeader(HttpHeaders.Names.CONTENT_RANGE, "bytes " + lowRange + "-" + highRange + "/" + totalsize);
-					}
-
-					if (contentFeatures != null) {
-						output.setHeader("ContentFeatures.DLNA.ORG", files.get(0).getDlnaContentFeatures());
-					}
-
-					if(owner!=null)
-						dlna.updateRender(owner);
-
-					output.setHeader(HttpHeaders.Names.ACCEPT_RANGES, "bytes");
-					output.setHeader(HttpHeaders.Names.CONNECTION, "keep-alive");
 				}
 			}
 		} else if ((method.equals("GET") || method.equals("HEAD")) && (argument.toLowerCase().endsWith(".png") || argument.toLowerCase().endsWith(".jpg") || argument.toLowerCase().endsWith(".jpeg"))) {
@@ -674,15 +701,9 @@ public class RequestV2 extends HTTPResource {
 		} else if (inputStream != null) {
 			// There is an input stream to send as a response.
 
-			if (CLoverride > -1) {
-				// Content-Length override has been set, so use it.
-				if (lowRange > 0 && highRange > 0) {
-					// lowRange and highRange have been set, send a range of bytes.
-					// See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.16 for details.
-					// FIXME: Don't send the default OK status, send PARTIAL_CONTENT instead. 
-					// output.setStatus(HttpResponseStatus.PARTIAL_CONTENT);
-					output.setHeader(HttpHeaders.Names.CONTENT_LENGTH, "" + (highRange - lowRange + 1));
-				} else if (CLoverride != DLNAMediaInfo.TRANS_SIZE) {
+			if (CLoverride > -2) {
+				// Content-Length override has been set, send or omit as appropriate
+				if (CLoverride > -1 && CLoverride != DLNAMediaInfo.TRANS_SIZE) {
 					// Since PS3 firmware 2.50, it is wiser not to send an arbitrary Content-Length,
 					// as the PS3 will display a network error and request the last seconds of the
 					// transcoded video. Better to send no Content-Length at all.

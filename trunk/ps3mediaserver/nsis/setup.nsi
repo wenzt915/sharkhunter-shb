@@ -1,4 +1,3 @@
-
 !include "MUI.nsh"
 !include "FileFunc.nsh"
 !include "TextFunc.nsh"
@@ -20,10 +19,15 @@ InstallDirRegKey HKCU "${REG_KEY_SOFTWARE}" ""
 
 SetCompressor /SOLID lzma
 SetCompressorDictSize 32
- 
+
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\PMS.exe"
 !define MUI_WELCOMEFINISHPAGE_BITMAP "${NSISDIR}\Contrib\Graphics\Wizard\win.bmp"
+
+!define MUI_FINISHPAGE_SHOWREADME ""
+!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_SHOWREADME_TEXT "Create Desktop Shortcut"
+!define MUI_FINISHPAGE_SHOWREADME_FUNCTION CreateDesktopShortcut
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -62,6 +66,10 @@ Function SetMemLeave
 	WriteRegStr HKCU "${REG_KEY_SOFTWARE}" "HeapMem" "$0"
 FunctionEnd
 
+Function CreateDesktopShortcut
+  CreateShortCut "$DESKTOP\PS3 Media Server.lnk" "$INSTDIR\pms.exe"
+FunctionEnd
+
 Section "Program Files"
   SetOutPath "$INSTDIR"
   SetOverwrite on
@@ -83,15 +91,21 @@ Section "Program Files"
   File "icon.ico"
   File "MOVIEINFO.conf"
   
+
+  ;the user may have set the installation dir
+  ;as the profile dir, so we can't clobber this
+  SetOverwrite off
+  File "WEB.conf"
+
   ;Store install folder
   WriteRegStr HKCU "${REG_KEY_SOFTWARE}" "" $INSTDIR
- 
- ;Create uninstaller
- WriteUninstaller "$INSTDIR\Uninst.exe"
+
+  ;Create uninstaller
+  WriteUninstaller "$INSTDIR\Uninst.exe"
 
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayName" "PS3 Media Server"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayIcon" "$INSTDIR\icon.ico"
-  WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayVersion" "1.40.0"
+  WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "DisplayVersion" "1.40.1"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "Publisher" "PS3 Media Server"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "URLInfoAbout" "http://www.ps3mediaserver.org"
   WriteRegStr HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}" "UninstallString" '"$INSTDIR\uninst.exe"'
@@ -104,8 +118,6 @@ Section "Program Files"
 
   ReadENVStr $R0 ALLUSERSPROFILE
   SetOutPath "$R0\PMS-SHB"
-  SetOverwrite off
-  File "WEB.conf"
   AccessControl::GrantOnFile "$R0\PMS-SHB" "(S-1-5-32-545)" "FullAccess"
   File "PMS.conf.new"
   File "PMS.cred.new"
@@ -138,13 +150,14 @@ Section "Program Files"
   ;CopyFiles "PMS.conf.new" "PMS.conf"
 SectionEnd
 
- 
+
 Section "Start Menu Shortcuts"
   SetShellVarContext all
   CreateDirectory "$SMPROGRAMS\PS3 Media Server-SHB"
   CreateShortCut "$SMPROGRAMS\PS3 Media Server-SHB\PS3 Media Server-SHB.lnk" "$INSTDIR\PMS.exe" "" "$INSTDIR\PMS.exe" 0
   CreateShortCut "$SMPROGRAMS\PS3 Media Server-SHB\Uninstall.lnk" "$INSTDIR\uninst.exe" "" "$INSTDIR\uninst.exe" 0
 SectionEnd
+
  
 Section "Desktop shortcut"
   SetShellVarContext all
@@ -178,6 +191,7 @@ Section "Uninstall"
   RMDir /REBOOTOK "$SMPROGRAMS\PS3 Media Server-SHB"
   Delete /REBOOTOK "$SMPROGRAMS\PS3 Media Server-SHB\PS3 Media Server-SHB.lnk"
    Delete /REBOOTOK "$SMPROGRAMS\PS3 Media Server-SHB\Uninstall.lnk" 
+
   DeleteRegKey HKEY_LOCAL_MACHINE "${REG_KEY_UNINSTALL}"
   DeleteRegKey HKCU "${REG_KEY_SOFTWARE}"
 

@@ -63,7 +63,7 @@ public class WEB extends Format {
 
 	@Override
 	public String[] getId() {
-		return PMS.getConfiguration().getWebFileExtensions();
+		return new String[]{"http", "mms", "rtsp", "rtp", "udp", "screen"};
 	}
 
 	@Override

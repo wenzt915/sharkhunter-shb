@@ -18,14 +18,12 @@
  */
 package net.pms.formats;
 
-import net.pms.PMS;
-
 public class MKV extends MPG {
 	public boolean ps3compatible() {
 		return false;
 	}
 
 	public String[] getId() {
-		return PMS.getConfiguration().getMkvFileExtensions();
+		return new String[]{"mkv", "dv", "ty", "mov", "ogm", "ogv", "hdmov", "hdm", "rmv", "rmvb", "rm", "asf", "evo", "asx", "flv", "m2v", "3gp", "3g2"};
 	}
 }

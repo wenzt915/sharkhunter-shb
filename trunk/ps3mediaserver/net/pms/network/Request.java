@@ -36,6 +36,7 @@ import net.pms.configuration.RendererConfiguration;
 import net.pms.dlna.DLNAMediaAudio;
 import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
+import net.pms.dlna.RootFolder;
 import net.pms.external.StartStopListenerDelegate;
 
 import org.slf4j.Logger;
@@ -180,7 +181,7 @@ public class Request extends HTTPResource {
 		} else if ((method.equals("GET") || method.equals("HEAD")) && argument.startsWith("get/")) {
 			String id = argument.substring(argument.indexOf("get/") + 4, argument.lastIndexOf("/"));
 			id = id.replace("%24", "$"); // popcorn hour ?
-			ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
+			ArrayList<DLNAResource> files = getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
 			
 			if(files==null||files.size()==0) { // nothing found
 				String tmp=(String)PMS.getConfiguration().getCustomProperty("remote_control");
@@ -190,7 +191,7 @@ public class Request extends HTTPResource {
 						RendererConfiguration r=renders.get(i);
 						if(r.equals(mediaRenderer))
 							continue;
-						files = PMS.get().getRootFolder(r).getDLNAResources(id, false, 0, 0, mediaRenderer);
+						files = getRootFolder(r).getDLNAResources(id, false, 0, 0, mediaRenderer);
 						if(files!=null&&files.size()!=0) { 
 							owner=r;
 							break;
@@ -430,7 +431,7 @@ public class Request extends HTTPResource {
 				else if (soapaction.contains("ContentDirectory:1#Search")) 
 					searchCriteria=getEnclosingValue(content,"<SearchCriteria>","</SearchCriteria>");
 
-				ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
+				ArrayList<DLNAResource> files = getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
 						searchCriteria);
 				if (searchCriteria != null && files != null) {
 					searchCriteria=searchCriteria.toLowerCase();
@@ -618,6 +619,13 @@ public class Request extends HTTPResource {
 	
 	public void setReMap(Socket s) {
 		remap=s;
+	}
+	
+	private RootFolder getRootFolder(RendererConfiguration r) {
+		RootFolder root=PMS.get().remRoot(remap);
+		if(root==null) // no user found, fallback
+			return PMS.get().getRootFolder(r);
+		return root;
 	}
 	
 }
