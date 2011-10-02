@@ -1,4 +1,4 @@
-version = 0.24
+version = 0.25
 macrodef ytMedia {
 	media {
                 # Movie list
@@ -98,7 +98,7 @@ macrodef ytSubCategory1 {
 channel YouTube {
     img = http://www.engr.uky.edu/solarcar/sites/default/files/YouTube_icon.png
 	folder {
-		name=Favorites
+		name=Favorite YouTube Channels
 		folder {
 			name=Bara Bajen
 			url=http://www.youtube.com/user/BaraBajenTV
