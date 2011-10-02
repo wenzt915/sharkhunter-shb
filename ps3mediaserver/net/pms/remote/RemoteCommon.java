@@ -1,6 +1,7 @@
 package net.pms.remote;
 
 import java.math.BigInteger;
+import java.util.Random;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -39,5 +40,15 @@ public class RemoteCommon {
 	
 	public static boolean ignoreLine(String str) {
 		return (str.charAt(0)=='#')||(StringUtils.isEmpty(str));
+	}
+	
+	private final static String chars="1234567890qwertyuiopasdfghjklzxcvbn()*+!#%&/";
+	
+	public static byte[] getSalt(Random rand) {
+		int saltLen=rand.nextInt(10)+4;
+		byte[] salt=new byte[saltLen];
+		for(int i=0;i<saltLen;i++)
+			salt[i]=(byte)chars.charAt(rand.nextInt(chars.length()));
+		return salt;
 	}
 }

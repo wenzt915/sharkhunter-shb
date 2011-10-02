@@ -35,6 +35,9 @@ public class RemoteClient extends Thread {
 	private final static int PERIOD=18000;
 	private final static int RECHALLENGE_CNT=9; // every 3rd minute
 	
+	private final static int NORMAL=0;
+	private final static int WEB=1;
+	
 	private static final Logger logger = LoggerFactory.getLogger(RemoteClient.class);
 	
 	private ServerSocket sock;
@@ -174,6 +177,7 @@ public class RemoteClient extends Thread {
 		cd.rechallenge=RECHALLENGE_CNT;
 		cd.speed=0.0;
 		cd.root=null;
+		cd.type=NORMAL;
 		if(str.length>3) 
 			if(str[3].equalsIgnoreCase("true")) // no speed check
 				return cd;
@@ -331,6 +335,10 @@ public class RemoteClient extends Thread {
 		r.setMaxVideoBitrate(String.valueOf(br));
 	}
 	
+	public void addWebClient(String usr,String pwd,String salt,InetSocketAddress addr) {
+		
+	}
+	
 	private class ClientData {
 		public String name;
 		public Socket socket;
@@ -344,6 +352,7 @@ public class RemoteClient extends Thread {
 		public int rechallenge;
 		public double speed;
 		public RootFolder root;
+		public int type;
 	}
 
 }

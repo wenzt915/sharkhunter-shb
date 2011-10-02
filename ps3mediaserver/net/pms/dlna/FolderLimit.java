@@ -36,6 +36,12 @@ public class FolderLimit extends VirtualFolder {
 		try {
 			FolderLimitLevel fll=levels.get(level+1);
 			fll.setStart(res);
+			if((fll.level()==0)&&(levels.size()>1)) {
+				// we ant to remove all levels 1+ so we clear all
+				// and read level 0, its easier
+				levels.clear();
+				levels.add(fll);
+			}
 		}
 		catch (IndexOutOfBoundsException e) { // create new level
 			FolderLimitLevel fll=new FolderLimitLevel(level+1);
