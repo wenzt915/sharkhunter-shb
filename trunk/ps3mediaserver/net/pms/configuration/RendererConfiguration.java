@@ -295,7 +295,7 @@ public class RendererConfiguration {
 
 	// Sony devices require JPG thumbnails
 	private static final String FORCE_JPG_THUMBNAILS = "ForceJPGThumbnails";
-    	
+
 	// Ditlew
 	private static final String SHOW_DVD_TITLE_DURATION = "ShowDVDTitleDuration";
 	private static final String CBR_VIDEO_BITRATE = "CBRVideoBitrate";
@@ -707,7 +707,6 @@ public class RendererConfiguration {
 	}
 
 	public boolean isDLNATreeHack() {
-		
 		return getBoolean(DLNA_TREE_HACK, false) && MediaInfoParser.isValid();
 	}
 	

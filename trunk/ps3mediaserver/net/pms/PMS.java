@@ -370,10 +370,10 @@ public class PMS {
 
 		String cwd = new File("").getAbsolutePath();
 		logger.info("Working directory: " + cwd);
-
+		
 		logger.info("Temp folder: " + configuration.getTempFolder());
 		logger.info("Logging config file: " + LoggingConfigFileLoader.getConfigFilePath());
-		
+
 		HashMap<String, String> lfps = LoggingConfigFileLoader.getLogFilePaths();
 
 		if (lfps != null && lfps.size() > 0) {
@@ -410,6 +410,7 @@ public class PMS {
 		} else {
 			logger.info("Profile status: no such file");
 		}
+
 
 		logger.info("Profile name: " + configuration.getProfileName());
 		logger.info("");

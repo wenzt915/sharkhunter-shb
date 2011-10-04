@@ -157,12 +157,18 @@ public class RealFile extends MapFile {
 			if (splitTrack > 0) {
 				fileName += "#SplitTrack" + splitTrack;
 			}
+			
 			if (PMS.getConfiguration().getUseCache()) {
-				ArrayList<DLNAMediaInfo> medias = PMS.get().getDatabase().getData(fileName, file.lastModified());
-				if (medias != null && medias.size() == 1) {
-					media = medias.get(0);
-					media.finalize(getType(), input);
-					found = true;
+				DLNAMediaDatabase database = PMS.get().getDatabase();
+
+				if (database != null) {
+					ArrayList<DLNAMediaInfo> medias = database.getData(fileName, file.lastModified());
+
+					if (medias != null && medias.size() == 1) {
+						media = medias.get(0);
+						media.finalize(getType(), input);
+						found = true;
+					}
 				}
 			}
 
@@ -178,7 +184,11 @@ public class RealFile extends MapFile {
 					media.parse(input, ext, getType(), false);
 				}
 				if (found && PMS.getConfiguration().getUseCache()) {
-					PMS.get().getDatabase().insertData(fileName, file.lastModified(), getType(), media);
+					DLNAMediaDatabase database = PMS.get().getDatabase();
+
+					if (database != null) {
+						database.insertData(fileName, file.lastModified(), getType(), media);
+					}
 				}
 			}
 		}
