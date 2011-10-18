@@ -50,6 +50,11 @@ public class RequestHandler implements Runnable {
 	private Socket socket;
 	private OutputStream output;
 	private BufferedReader br;
+	
+	// Used to filter out known headers when the renderer is not recognized
+	private final static String[] KNOWN_HEADERS = { "Accept", "Accept-Language", "Accept-Encoding", "Connection",
+		"Content-Length", "Content-Type", "Date", "Host", "User-Agent" };
+
 
 	public RequestHandler(Socket socket) throws IOException {
 		this.socket = socket;
@@ -71,7 +76,9 @@ public class RequestHandler implements Runnable {
 			String userAgentString = null;
 			DataInputStream in=new DataInputStream(socket.getInputStream());
 			String headerLine = br.readLine();
-			
+			StringBuilder unknownHeaders = new StringBuilder();
+			String separator = "";
+
 			while (headerLine != null && headerLine.length() > 0) {
 				logger.trace("Received on socket: " + headerLine);
 				if (!useragentfound && headerLine != null && headerLine.toUpperCase().startsWith("USER-AGENT") && request != null) {
@@ -134,6 +141,25 @@ public class RequestHandler implements Runnable {
 							timeseek = timeseek.substring(0, timeseek.indexOf("-"));
 						}
 						request.setTimeseek(Double.parseDouble(timeseek));
+					} else {
+						 // If we made it to here, none of the previous header checks matched.
+						 // Unknown headers make interesting logging info when we cannot recognize
+						 // the media renderer, so keep track of the truly unknown ones.
+						boolean isKnown = false;
+						
+						// Try to match possible known headers.
+						for (String knownHeaderString : KNOWN_HEADERS) {
+							if (headerLine.toLowerCase().startsWith(knownHeaderString.toLowerCase())) {
+								isKnown = true;
+								break;
+							}
+						}
+						
+						if (!isKnown) {
+							// Truly unknown header, therefore interesting. Save for later use.
+							unknownHeaders.append(separator + headerLine);
+							separator = ", ";
+						}
 					}
 				} catch (Exception e) {
 					logger.error("Error in parsing HTTP headers", e);
@@ -149,7 +175,8 @@ public class RequestHandler implements Runnable {
 					
 					if (userAgentString != null && !userAgentString.equals("FDSSDP")) {
 						// we have found an unknown renderer
-						logger.info("Media renderer was not recognized. HTTP User-Agent: " + userAgentString);
+						logger.info("Media renderer was not recognized. Possible identifying HTTP headers: User-Agent: "	+ userAgentString
+								+ ("".equals(unknownHeaders.toString()) ? "" : ", " + unknownHeaders.toString()));
 						PMS.get().setRendererfound(request.getMediaRenderer());
 					}
 				} else {
@@ -171,7 +198,7 @@ public class RequestHandler implements Runnable {
 						String id = arg.substring(arg.indexOf("0$"), arg.lastIndexOf("/"));
 						id = id.replace("%24", "$"); // popcorn hour ?
 						String name=arg.substring(arg.lastIndexOf("/")+1);
-						DLNAResource res=PMS.get().getRootFolder(request.getMediaRenderer()).search(id);
+						DLNAResource res=PMS.get().getRootFolder(request.getMediaRenderer()).search(id,1,request.getMediaRenderer());
 						if(res!=null) {
 							OutputStream out=res.upload(name);
 							if(out!=null) {

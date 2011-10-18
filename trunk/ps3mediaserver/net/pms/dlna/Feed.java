@@ -169,17 +169,18 @@ public class Feed extends DLNAResource {
 	}
 
 	@Override
-	public boolean refreshChildren() {
-		if (System.currentTimeMillis() - lastmodified > 3600000) { // refresh every hour
-			try {
-				children.clear();
-				parse();
-			} catch (Exception e) {
-				logger.error("Error in parsing stream: " + url, e);
-			}
-			return true;
+	public boolean isRefreshNeeded() {
+	    return (System.currentTimeMillis() - lastmodified > 3600000);
+	}
+
+	@Override
+	public void refreshChildren() {
+		try {
+			children.clear();
+			parse();
+		} catch (Exception e) {
+			logger.error("Error in parsing stream: " + url, e);
 		}
-		return false;
 	}
 
 	/**

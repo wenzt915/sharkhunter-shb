@@ -26,19 +26,23 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
-import net.pms.io.WinUtils;
+import net.pms.PMS;
+import net.pms.io.SystemUtils;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.configuration.event.ConfigurationListener;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -175,6 +179,8 @@ public class PmsConfiguration {
 	private static final String KEY_UPNP_PORT = "upnp_port";
 	private static final String UNLIMITED_BITRATE = "0";
 	private static final String KEY_UUID = "uuid";
+	private static final String KEY_MENCODER_FORCED_SUB_LANG = "forced_sub_lang";
+	private static final String KEY_MENCODER_FORCED_SUB_TAGS = "forced_sub_tags";
 
 	// the name of the subdirectory under which PMS config files are stored for this build (default: PMS).
 	// see Build for more details
@@ -200,6 +206,18 @@ public class PmsConfiguration {
 	private final PropertiesConfiguration configuration;
 	private final TempFolder tempFolder;
 	private final ProgramPathDisabler programPaths;
+	
+	private final IpFilter filter = new IpFilter();
+	
+	/**
+	 * The set of the keys, which change needs reload.
+	 */
+	public static final Set<String> NEED_RELOAD_FLAGS = new HashSet<String>(Arrays.asList(
+			KEY_ALTERNATE_THUMB_FOLDER, KEY_NETWORK_INTERFACE, KEY_IP_FILTER,
+			KEY_SORT_METHOD, KEY_HIDE_EMPTY_FOLDERS, KEY_HIDE_TRANSCODE_FOLDER, KEY_HIDE_MEDIA_LIBRARY_FOLDER, KEY_OPEN_ARCHIVES, KEY_USE_CACHE,
+			KEY_HIDE_ENGINENAMES, KEY_ITUNES_ENABLED, KEY_IPHOTO_ENABLED, KEY_APERTURE_ENABLED, KEY_ENGINES, KEY_FOLDERS, KEY_HIDE_VIDEO_SETTINGS,
+			KEY_AUDIO_THUMBNAILS_METHOD, KEY_NOTRANSCODE, KEY_FORCETRANSCODE, KEY_SERVER_PORT, KEY_SERVER_HOSTNAME, KEY_CHAPTER_SUPPORT,
+			KEY_HIDE_EXTENSIONS));
 
 	/*
 		The following code enables a single setting - PMS_PROFILE - to be used to
@@ -468,18 +486,6 @@ public class PmsConfiguration {
 		return programPaths.getMencoderPath();
 	}
 
-	public String getMencoderMTPath() {
-		return programPaths.getMencoderMTPath();
-	}
-
-	public String getMencoderAlternatePath() {
-		return programPaths.getMencoderAlternatePath();
-	}
-
-	public String getMencoderAlternateMTPath() {
-		return programPaths.getMencoderAlternateMTPath();
-	}
-
 	public int getMencoderMaxThreads() {
 		return Math.min(getInt(KEY_MENCODER_MAX_THREADS, getNumberOfCpuCores()), MENCODER_MAX_THREADS);
 	}
@@ -671,20 +677,33 @@ public class PmsConfiguration {
 		return value;
 	}
 	
+	/**
+	 * Return a <code>List</code> of <code>String</code> values for a given configuration
+	 * key. First, the key is looked up in the current configuration settings. If it
+	 * exists and contains a valid value, that value is returned. If the key contains an
+	 * invalid value or cannot be found, a list with the specified default values is
+	 * returned.
+	 * @param key The key to look up.
+	 * @param def The default values to return when no valid key value can be found.
+	 *            These values should be entered as a comma separated string, whitespace
+	 *            will be trimmed. For example: <code>"gnu,    gnat  ,moo "</code> will be
+	 *            returned as <code>{ "gnu", "gnat", "moo" }</code>.
+	 * @return The list of value strings configured for the key.
+	 */
 	private List<String> getStringList(String key, String def) {
-	    String value = getString(key, def);
-	    if (value != null) {
-	        String[] arr = value.split(",");
-	        List<String> result = new ArrayList<String> (arr.length);
-	        for (String str : arr) {
-	            if (str.trim().length()>0) {
-	                result.add(str.trim());
-	            }
-	        }
-	        return result;
-	    } else {
-	        return Collections.emptyList();
-	    }
+		String value = getString(key, def);
+		if (value != null) {
+			String[] arr = value.split(",");
+			List<String> result = new ArrayList<String>(arr.length);
+			for (String str : arr) {
+				if (str.trim().length() > 0) {
+					result.add(str.trim());
+				}
+			}
+			return result;
+		} else {
+			return Collections.emptyList();
+		}
 	}
 
 	/**
@@ -886,17 +905,29 @@ public class PmsConfiguration {
 
 	/**
 	 * Set the preferred language for the PMS user interface.
-	 * @param value The ISO 639 language code
+	 * @param value The ISO 639 language code.
 	 */
 	public void setLanguage(String value) {
 		configuration.setProperty(KEY_LANGUAGE, value);
 		Locale.setDefault(new Locale(getLanguage()));
 	}
 
+	/**
+	 * Returns the number of seconds from the start of a video file (the seek
+	 * position) where the thumbnail image for the movie should be extracted
+	 * from. Default is 1 second.
+	 * @return The seek position in seconds.
+	 */
 	public int getThumbnailSeekPos() {
 		return getInt(KEY_THUMBNAIL_SEEK_POS, 1);
 	}
 
+	/**
+	 * Sets the number of seconds from the start of a video file (the seek
+	 * position) where the thumbnail image for the movie should be extracted
+	 * from.
+	 * @param value The seek position in seconds.
+	 */
 	public void setThumbnailSeekPos(int value) {
 		configuration.setProperty(KEY_THUMBNAIL_SEEK_POS, value);
 	}
@@ -912,22 +943,49 @@ public class PmsConfiguration {
 		return getBoolean(KEY_MENCODER_ASS, Platform.isWindows() || Platform.isMac());
 	}
 
+	/**
+	 * Returns whether or not subtitles should be disabled when using MEncoder
+	 * as transcoding engine. Default is false, meaning subtitles should not
+	 * be disabled.
+	 * @return True if subtitles should be disabled, false otherwise.
+	 */
 	public boolean isMencoderDisableSubs() {
 		return getBoolean(KEY_MENCODER_DISABLE_SUBS, false);
 	}
 
+	/**
+	 * Returns whether or not the Pulse Code Modulation audio format should be
+	 * forced when using MEncoder as transcoding engine. The default is false.
+	 * @return True if PCM should be forced, false otherwise.
+	 */
 	public boolean isMencoderUsePcm() {
 		return getBoolean(KEY_MENCODER_USE_PCM, false);
 	}
 
+	/**
+	 * Returns the name of a TrueType font to use for MEncoder subtitles.
+	 * Default is <code>""</code>.
+	 * @return The font name.
+	 */
 	public String getMencoderFont() {
 		return getString(KEY_MENCODER_FONT, "");
 	}
 
+	/**
+	 * Returns the audio language priority for MEncoder as a comma separated
+	 * string. For example: <code>"eng,fre,jpn,ger,und"</code>, where "und"
+	 * stands for "undefined".
+	 * @return The audio language priority string.
+	 */
 	public String getMencoderAudioLanguages() {
 		return getString(KEY_MENCODER_AUDIO_LANGS, getDefaultLanguages());
 	}
 
+	/**
+	 * Returns a string of comma separated audio or subtitle languages,
+	 * ordered by priority. 
+	 * @return The string of languages.
+	 */
 	private String getDefaultLanguages() {
 		if ("fr".equals(getLanguage())) {
 			return "fre,jpn,ger,eng,und";
@@ -936,22 +994,62 @@ public class PmsConfiguration {
 		}
 	}
 
+	/**
+	 * Returns the subtitle language priority for MEncoder as a comma
+	 * separated string. For example: <code>"eng,fre,jpn,ger,und"</code>,
+	 * where "und" stands for "undefined".
+	 * @return The subtitle language priority string.
+	 */
 	public String getMencoderSubLanguages() {
 		return getString(KEY_MENCODER_SUB_LANGS, getDefaultLanguages());
 	}
 
+	public String getMencoderForcedSubLanguage() {
+		return getString(KEY_MENCODER_FORCED_SUB_LANG, getLanguage());
+	}
+
+	public String getMencoderForcedSubTags() {
+  		return getString(KEY_MENCODER_FORCED_SUB_TAGS, "forced");
+  	}
+
+	/**
+	 * Returns a string of audio language and subtitle language pairs
+	 * ordered by priority for MEncoder to try to match. Audio language
+	 * and subtitle language should be comma separated as a pair,
+	 * individual pairs should be semicolon separated. "*" can be used to
+	 * match any language. Subtitle language can be defined as "off". For
+	 * example: <code>"en,off;jpn,eng;*,eng;*;*"</code>.
+	 * Default value is <code>""</code>.
+	 * @return The audio and subtitle languages priority string.
+	 */
 	public String getMencoderAudioSubLanguages() {
 		return getString(KEY_MENCODER_AUDIO_SUB_LANGS, "");
 	}
 
+	/**
+	 * Returns whether or not MEncoder should use FriBiDi mode, which
+	 * is needed to display subtitles in languages that read from right to
+	 * left, like Arabic, Farsi, Hebrew, Urdu, etc. Default value is false.
+	 * @return True if FriBiDi mode should be used, false otherwise.
+	 */
 	public boolean isMencoderSubFribidi() {
 		return getBoolean(KEY_MENCODER_SUB_FRIBIDI, false);
 	}
 
+	/**
+	 * Returns the character encoding (or code page) that MEncoder should use
+	 * for displaying subtitles. Default is "cp1252".
+	 * @return The character encoding.
+	 */
 	public String getMencoderSubCp() {
 		return getString(KEY_MENCODER_SUB_CP, "cp1252");
 	}
 
+	/**
+	 * Returns whether or not MEncoder should use fontconfig for displaying
+	 * subtitles. Default is false.
+	 * @return True if fontconfig should be used, false otherwise.
+	 */
 	public boolean isMencoderFontConfig() {
 		return getBoolean(KEY_MENCODER_FONT_CONFIG, false);
 	}
@@ -970,6 +1068,14 @@ public class PmsConfiguration {
 
 	public void setMencoderSubLanguages(String value) {
 		configuration.setProperty(KEY_MENCODER_SUB_LANGS, value);
+	}
+
+	public void setMencoderForcedSubLanguage(String value) {
+		configuration.setProperty(KEY_MENCODER_FORCED_SUB_LANG, value);
+	}
+
+	public void setMencoderForcedSubTags(String value) {
+		configuration.setProperty(KEY_MENCODER_FORCED_SUB_TAGS, value);
 	}
 
 	public void setMencoderAudioSubLanguages(String value) {
@@ -1299,8 +1405,12 @@ public class PmsConfiguration {
 	public void setEnginesAsList(ArrayList<String> enginesAsList) {
 		configuration.setProperty(KEY_ENGINES, listToString(enginesAsList));
 	}
+	
+	public List<String> getEnginesAsList() {
+		return getEnginesAsList(PMS.get().getRegistry());
+	}
 
-	public List<String> getEnginesAsList(WinUtils registry) {
+	public List<String> getEnginesAsList(SystemUtils registry) {
 		List<String> engines = stringToList(getString(KEY_ENGINES, "mencoder,avsmencoder,tsmuxer,mplayeraudio,ffmpegaudio,tsmuxeraudio,vlcvideo,mencoderwebvideo,mplayervideodump,mplayerwebaudio,vlcaudio,ffmpegdvrmsremux,rawthumbs"));
 		engines = hackAvs(registry, engines);
 		return engines;
@@ -1319,7 +1429,7 @@ public class PmsConfiguration {
 	private static boolean avsHackLogged = false;
 
 	// TODO: Get this out of here
-	private static List<String> hackAvs(WinUtils registry, List<String> input) {
+	private static List<String> hackAvs(SystemUtils registry, List<String> input) {
 		List<String> toBeRemoved = new ArrayList<String>();
 		for (String engineId : input) {
 			if (engineId.startsWith("avs") && !registry.isAvis() && Platform.isWindows()) {
@@ -1521,6 +1631,11 @@ public class PmsConfiguration {
 	public String getIpFilter() {
 		return getString(KEY_IP_FILTER, "");
 	}
+	
+	public synchronized IpFilter getIpFiltering() {
+	    filter.setRawFilter(getIpFilter());
+	    return filter;
+	}
 
 	public void setIpFilter(String value) {
 		configuration.setProperty(KEY_IP_FILTER, value);
@@ -1699,7 +1814,7 @@ public class PmsConfiguration {
 	public void setAutoUpdate(boolean value) {
 		configuration.setProperty(KEY_AUTO_UPDATE, value);
 	}
-	
+
 	public String getIMConvertPath() {
 		return programPaths.getIMConvertPath();
 	}
@@ -1711,11 +1826,19 @@ public class PmsConfiguration {
 	public String getUuid() {
 		return getString(KEY_UUID, null);
 	}
-	
+
 	public void setUuid(String value){
 		configuration.setProperty(KEY_UUID, value);
 	}
 	
+	public void addConfigurationListener(ConfigurationListener l) {
+		configuration.addConfigurationListener(l);
+	}
+
+	public void removeConfigurationListener(ConfigurationListener l) {
+		configuration.removeConfigurationListener(l);
+	}
+
 	/////////////////////////////////////////////////////////////////
 	
 	private static final String KEY_NO_FOLDERS="no_shared";

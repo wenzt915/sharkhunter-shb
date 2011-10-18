@@ -26,10 +26,11 @@ import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
-import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 import net.pms.external.StartStopListenerDelegate;
 
@@ -56,24 +57,40 @@ import org.slf4j.LoggerFactory;
 
 public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 	private static final Logger logger = LoggerFactory.getLogger(RequestHandlerV2.class);
+	private static final Pattern TIMERANGE_PATTERN =
+ Pattern.compile("timeseekrange\\.dlna\\.org\\W*npt\\W*=\\W*([\\d\\.:]+)?\\-?([\\d\\.:]+)?",
+			Pattern.CASE_INSENSITIVE);
 	private volatile HttpRequest nettyRequest;
-	
-	private ChannelGroup group;
 
+	private final ChannelGroup group;
+
+
+
+	// Used to filter out known headers when the renderer is not recognized
+	private final static String[] KNOWN_HEADERS = { "Accept", "Accept-Language", "Accept-Encoding", "Connection",
+		"Content-Length", "Content-Type", "Date", "Host", "User-Agent" };
+	
 	public RequestHandlerV2(ChannelGroup group) {
-            this.group = group;
+		this.group = group;
 	}
 
-    @Override
+	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
 		throws Exception {
 		RequestV2 request = null;
-
+		StringBuilder unknownHeaders = new StringBuilder();
+		String separator = "";
+		
 		HttpRequest nettyRequest = this.nettyRequest = (HttpRequest) e.getMessage();
 
-		InetAddress ia = ((InetSocketAddress) e.getChannel().getRemoteAddress()).getAddress();
+		InetSocketAddress remoteAddress = (InetSocketAddress) e.getChannel().getRemoteAddress();
+		InetAddress ia = remoteAddress.getAddress();
+		if (filterIp(ia)) {
+			e.getChannel().close();
+			return;
+		}
 		RendererConfiguration renderer = RendererConfiguration.getRendererConfigurationBySocketAddress(ia);
-		logger.trace("Opened request handler on socket " + e.getChannel().getRemoteAddress() + (renderer != null ? (" // " + renderer) : ""));
+		logger.trace("Opened request handler on socket " + remoteAddress + (renderer != null ? (" // " + renderer) : ""));
 		PMS.get().getRegistry().disableGoToSleep();
 		boolean useragentfound = renderer != null;
 		String userAgentString = null;
@@ -141,28 +158,37 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 					request.setTransferMode(headerLine.substring(headerLine.toLowerCase().indexOf("transfermode.dlna.org:") + 22).trim());
 				} else if (headerLine.toLowerCase().indexOf("getcontentfeatures.dlna.org:") > -1) {
 					request.setContentFeatures(headerLine.substring(headerLine.toLowerCase().indexOf("getcontentfeatures.dlna.org:") + 28).trim());
-				} else if (headerLine.toUpperCase().indexOf(
-					"TIMESEEKRANGE.DLNA.ORG: NPT=") > -1) { // firmware
-					// 2.50+
-					String timeseek = headerLine.substring(headerLine.toUpperCase().indexOf(
-						"TIMESEEKRANGE.DLNA.ORG: NPT=") + 28);
-					if (timeseek.endsWith("-")) {
-						timeseek = timeseek.substring(0, timeseek.length() - 1);
-					} else if (timeseek.indexOf("-") > -1) {
-						timeseek = timeseek.substring(0, timeseek.indexOf("-"));
+				} else {
+					Matcher matcher = TIMERANGE_PATTERN.matcher(headerLine);
+					if (matcher.find()) {
+						String first = matcher.group(1);
+						if (first != null) {
+							request.setTimeRangeStartString(first);
+						}
+						String end = matcher.group(2);
+						if (end != null) {
+							request.setTimeRangeEndString(end);
+						}
+					}  else {
+						 // If we made it to here, none of the previous header checks matched.
+						 // Unknown headers make interesting logging info when we cannot recognize
+						 // the media renderer, so keep track of the truly unknown ones.
+						boolean isKnown = false;
+
+						// Try to match possible known headers.
+						for (String knownHeaderString : KNOWN_HEADERS) {
+							if (headerLine.toLowerCase().startsWith(knownHeaderString.toLowerCase())) {
+								isKnown = true;
+								break;
+							}
+						}
+
+						if (!isKnown) {
+							// Truly unknown header, therefore interesting. Save for later use.
+							unknownHeaders.append(separator + headerLine);
+							separator = ", ";
+						}
 					}
-					request.setTimeseek(Double.parseDouble(timeseek));
-				} else if (headerLine.toUpperCase().indexOf(
-					"TIMESEEKRANGE.DLNA.ORG : NPT=") > -1) { // firmware
-					// 2.40
-					String timeseek = headerLine.substring(headerLine.toUpperCase().indexOf(
-						"TIMESEEKRANGE.DLNA.ORG : NPT=") + 29);
-					if (timeseek.endsWith("-")) {
-						timeseek = timeseek.substring(0, timeseek.length() - 1);
-					} else if (timeseek.indexOf("-") > -1) {
-						timeseek = timeseek.substring(0, timeseek.indexOf("-"));
-					}
-					request.setTimeseek(Double.parseDouble(timeseek));
 				}
 			} catch (Exception ee) {
 				logger.error("Error parsing HTTP headers", ee);
@@ -175,10 +201,11 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 			if (request.getMediaRenderer() == null) {
 				request.setMediaRenderer(RendererConfiguration.getDefaultConf());
 				logger.trace("Using default media renderer " + request.getMediaRenderer().getRendererName());
-				
+
 				if (userAgentString != null && !userAgentString.equals("FDSSDP")) {
 					// we have found an unknown renderer
-					logger.info("Media renderer was not recognized. HTTP User-Agent: " + userAgentString);
+					logger.info("Media renderer was not recognized. Possible identifying HTTP headers: User-Agent: " + userAgentString
+							+ ("".equals(unknownHeaders.toString()) ? "" : ", " + unknownHeaders.toString()));
 					PMS.get().setRendererfound(request.getMediaRenderer());
 				}
 			} else {
@@ -188,7 +215,7 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 				logger.trace("Recognized media renderer " + request.getMediaRenderer().getRendererName());
 			}
 		}
-		
+
 		if (HttpHeaders.getContentLength(nettyRequest) > 0) {
 			byte data[] = new byte[(int) HttpHeaders.getContentLength(nettyRequest)];
 			ChannelBuffer content = nettyRequest.getContent();
@@ -202,6 +229,10 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 		}
 
 		writeResponse(e, request, ia);
+	}
+
+	private boolean filterIp(InetAddress ia) {
+		return !PMS.getConfiguration().getIpFiltering().allowed(ia);
 	}
 
 	private void writeResponse(MessageEvent e, RequestV2 request, InetAddress ia) {
@@ -277,13 +308,12 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 			group.add(ctx.getChannel());
 		}
 	}
-	
 	/* Uncomment to see channel events in the trace logs
-    @Override
-    public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
-        // Log all channel events.
-        logger.trace("Channel upstream event: " + e);
-        super.handleUpstream(ctx, e);
-    }
-    */
+	@Override
+	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+	// Log all channel events.
+	logger.trace("Channel upstream event: " + e);
+	super.handleUpstream(ctx, e);
+	}
+	 */
 }

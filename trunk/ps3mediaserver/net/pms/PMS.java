@@ -42,6 +42,8 @@ import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.logging.LogManager;
 
+import javax.swing.JOptionPane;
+
 import net.pms.configuration.Build;
 import net.pms.configuration.PmsConfiguration;
 import net.pms.configuration.RendererConfiguration;
@@ -82,9 +84,11 @@ import net.pms.formats.TIF;
 import net.pms.formats.WEB;
 import net.pms.gui.DummyFrame;
 import net.pms.gui.IFrame;
+import net.pms.io.BasicSystemUtils;
 import net.pms.io.OutputParams;
 import net.pms.io.OutputTextConsumer;
 import net.pms.io.ProcessWrapperImpl;
+import net.pms.io.SystemUtils;
 import net.pms.io.WinUtils;
 import net.pms.logging.LoggingConfigFileLoader;
 import net.pms.network.HTTPServer;
@@ -99,10 +103,13 @@ import net.pms.update.AutoUpdater;
 import net.pms.util.PMSUtil;
 import net.pms.util.ProcessUtil;
 import net.pms.util.SystemErrWrapper;
+
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.event.ConfigurationEvent;
+import org.apache.commons.configuration.event.ConfigurationListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.commons.configuration.ConfigurationException;
 import com.sun.jna.Platform;
 
 public class PMS {
@@ -119,7 +126,8 @@ public class PMS {
 	/**
 	 * Version showed in the UPnP XML descriptor and logs.
 	 */
-	public static  String VERSION = "1.40.1";
+
+	public static  String VERSION = "1.50.0";
 	public static final String AVS_SEPARATOR = "\1";
 
 	// (innot): The logger used for all logging.
@@ -147,20 +155,17 @@ public class PMS {
 		}
 		return renderer.getRootFolder();
 	}
+
 	/**
 	 * Pointer to a running PMS server.
 	 */
 	private static PMS instance = null;
-	/**
-	 * Semaphore used in order to not create two PMS instances at the same time.
-	 */
-	private static byte[] lock = null;
 
 	static {
-		lock = new byte[0];
 		sdfHour = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
 		sdfDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
 	}
+
 	/**
 	 * Array of {@link RendererConfiguration} that have been found by PMS.
 	 */
@@ -174,29 +179,27 @@ public class PMS {
 		if (!foundRenderers.contains(mediarenderer) && !mediarenderer.isFDSSDP()) {
 			foundRenderers.add(mediarenderer);
 			frame.addRendererIcon(mediarenderer.getRank(), mediarenderer.getRendererName(), mediarenderer.getRendererIcon());
-			if (mediarenderer.isPS3()) {
-				frame.setStatusCode(0, Messages.getString("PMS.5"), "clients/ps3slim_220.png");
-			}
+			frame.setStatusCode(0, Messages.getString("PMS.18"), "apply-220.png");
 		}
-		/*if (mediarenderer == HTTPResource.PS3) {
-		frame.setStatusCode(0, Messages.getString("PMS.5"), "PS3_2.png");
-		} else if (mediarenderer == HTTPResource.XBOX && !foundRenderers.contains(HTTPResource.PS3)) {
-		frame.setStatusCode(0, "Xbox found", "xbox360.png");
-		}*/
 	}
+
 	/**
 	 * HTTP server that serves the XML files needed by UPnP server and the media files.
 	 */
 	private HTTPServer server;
+
 	/**
 	 * User friendly name for the server.
 	 */
 	private String serverName;
+
 	private ArrayList<Format> extensions;
+
 	/**
 	 * List of registered {@link Player}s.
 	 */
 	private ArrayList<Player> players;
+
 	private ArrayList<Player> allPlayers;
 
 	/**
@@ -205,17 +208,20 @@ public class PMS {
 	public ArrayList<Player> getAllPlayers() {
 		return allPlayers;
 	}
+
 	private ProxyServer proxyServer;
 
 	public ProxyServer getProxy() {
 		return proxyServer;
 	}
+
 	public static SimpleDateFormat sdfDate;
 	public static SimpleDateFormat sdfHour;
 	public ArrayList<Process> currentProcesses = new ArrayList<Process>();
 
 	private PMS() {
 	}
+
 	/**
 	 * {@link IFrame} object that represents PMS GUI.
 	 */
@@ -227,16 +233,18 @@ public class PMS {
 	public boolean isWindows() {
 		return Platform.isWindows();
 	}
+
 	private int proxy;
+
 	/**Interface to Windows specific functions, like Windows Registry. registry is set by {@link #init()}.
 	 * @see WinUtils
 	 */
-	private WinUtils registry;
+	private SystemUtils registry;
 
 	/**
 	 * @see WinUtils
 	 */
-	public WinUtils getRegistry() {
+	public SystemUtils getRegistry() {
 		return registry;
 	}
 
@@ -344,7 +352,7 @@ public class PMS {
 			autoUpdater = new AutoUpdater(serverURL, VERSION);
 		}
 
-		registry = new WinUtils();
+		registry = createSystemUtils();
 
 		if (System.getProperty(CONSOLE) == null) {//$NON-NLS-1$
 			frame = new LooksFrame(autoUpdater, configuration);
@@ -354,6 +362,18 @@ public class PMS {
 			System.out.println("Switching to console mode");
 			frame = new DummyFrame();
 		}
+		configuration.addConfigurationListener(new ConfigurationListener() {
+                    
+                    @Override
+                    public void configurationChanged(ConfigurationEvent event) {
+                        if (!event.isBeforeUpdate()) {
+                            if (PmsConfiguration.NEED_RELOAD_FLAGS.contains(event.getPropertyName())) {
+                                frame.setReloadable(true);
+                            }
+                        }
+                    }
+                    
+		});
 
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png");
 		proxy = -1;
@@ -503,18 +523,10 @@ public class PMS {
 					Thread.sleep(7000);
 				} catch (InterruptedException e) {
 				}
-				boolean ps3found = false;
-				for (RendererConfiguration r : foundRenderers) {
-					if (r.isPS3()) {
-						ps3found = true;
-					}
-				}
-				if (!ps3found) {
-					if (foundRenderers.isEmpty()) {
-						frame.setStatusCode(0, Messages.getString("PMS.0"), "messagebox_critical-220.png");
-					} else {
-						frame.setStatusCode(0, Messages.getString("PMS.15"), "messagebox_warning-220.png");
-					}
+				if (foundRenderers.isEmpty()) {
+					frame.setStatusCode(0, Messages.getString("PMS.0"), "messagebox_critical-220.png");
+				} else {
+					frame.setStatusCode(0, Messages.getString("PMS.18"), "apply-220.png");
 				}
 			}
 		}.start();
@@ -528,11 +540,11 @@ public class PMS {
 			proxyServer = new ProxyServer(proxy);
 		}
 
-		// initialize the media library / cache
+		// initialize the cache
 		if (configuration.getUseCache()) {
 			initializeDatabase(); // XXX: this must be done *before* new MediaLibrary -> new MediaLibraryFolder
 			mediaLibrary = new MediaLibrary();
-			logger.info("A tiny media library admin interface is available at: http://" + server.getHost() + ":" + server.getPort() + "/console/home");
+			logger.info("A tiny cache admin interface is available at: http://" + server.getHost() + ":" + server.getPort() + "/console/home");
 		}
 
 		// XXX: this must be called:
@@ -583,6 +595,14 @@ public class PMS {
 	 */
 	public MediaLibrary getLibrary() {
 		return mediaLibrary;
+	}
+	
+	private SystemUtils createSystemUtils() {
+	    if (Platform.isWindows()) {
+	        return new WinUtils();
+	    } else {
+	        return new BasicSystemUtils();
+	    }
 	}
 
 	/**Executes the needed commands in order to make PMS a Windows service that starts whenever the machine is started.
@@ -695,7 +715,6 @@ public class PMS {
 
 	/**Transforms a comma separated list of directory entries into an array of {@link String}.
 	 * Checks that the directory exists and is a valid directory.
-	 * @param folders {@link String} Comma separated list of directories.
 	 * @param log whether to output log information
 	 * @return {@link File}[] Array of directories.
 	 * @throws IOException
@@ -705,8 +724,9 @@ public class PMS {
 	// this is called *way* too often (e.g. a dozen times with 1 renderer and 1 shared folder),
 	// so log it by default so we can fix it.
 	// BUT it's also called when the GUI is initialized (to populate the list of shared folders),
-	// and we don't want this message to appear *before* the PMS banner, so allow that call to suppress logging
-	public File[] loadFoldersConf(String folders, boolean log) throws IOException {
+	// and we don't want this message to appear *before* the PMS banner, so allow that call to suppress logging	
+	public File[] getFoldersConf(String tag,boolean log) {
+	        String folders = getConfiguration().getFolders(tag);
 		if (folders == null || folders.length() == 0) {
 			return null;
 		}
@@ -718,7 +738,7 @@ public class PMS {
 			// http://ps3mediaserver.org/forum/viewtopic.php?f=14&t=8883&start=250#p43520
 			folder = folder.replaceAll("&comma;", ",");
 			if (log) {
-				logger.trace("Checking shared folder: " + folder);
+				logger.info("Checking shared folder: " + folder);
 			}
 			File file = new File(folder);
 			if (file.exists()) {
@@ -735,6 +755,10 @@ public class PMS {
 		File f[] = new File[directories.size()];
 		directories.toArray(f);
 		return f;
+	}
+
+	public File[] getFoldersConf() {
+	    return getFoldersConf(null,true);
 	}
 
 	/**Restarts the server. The trigger is either a button on the main PMS window or via
@@ -980,25 +1004,22 @@ public class PMS {
 		}
 
 		try {
-			configuration = new PmsConfiguration();
-		} catch (Throwable t) {
-			System.err.println("Configuration error: " + t.getMessage());
-		}
-		
-		assert configuration != null;
+            configuration = new PmsConfiguration();
 
-		// Load the (optional) logback config file. This has to be called after 'new PmsConfiguration'
-		// as the logging starts immediately and some filters need the PmsConfiguration.
-		LoggingConfigFileLoader.load();
+            assert configuration != null;
 
-		killOld();
-		// create the PMS instance returned by get()
-		createInstance(); 
+            // Load the (optional) logback config file. This has to be called after 'new PmsConfiguration'
+            // as the logging starts immediately and some filters need the PmsConfiguration.
+            LoggingConfigFileLoader.load();
 
-		try {
-			// let's allow us time to show up serious errors in the GUI before quitting
-			Thread.sleep(60000);
-		} catch (InterruptedException e) {}
+            killOld();
+            // create the PMS instance returned by get()
+            createInstance(); 
+        } catch (Throwable t) {
+            System.err.println("Configuration error: " + t.getMessage());
+            JOptionPane.showMessageDialog(null, "Configuration error:"+t.getMessage(), "Error initalizing PMS!", JOptionPane.ERROR_MESSAGE);
+        }
+
 	}
 
 	public HTTPServer getServer() {
@@ -1021,6 +1042,14 @@ public class PMS {
 		}
 	}
 
+        public void storeFileInCache(File file, int formatType) {
+            if (getConfiguration().getUseCache()) {
+                if (!getDatabase().isDataExists(file.getAbsolutePath(), file.lastModified())) {
+                    getDatabase().insertData(file.getAbsolutePath(), file.lastModified(), formatType, null);
+                }
+            }
+        }
+    
 	/**
 	 * Retrieves the {@link net.pms.configuration.PmsConfiguration PmsConfiguration} object
 	 * that contains all configured settings for PMS. The object provides getters for all

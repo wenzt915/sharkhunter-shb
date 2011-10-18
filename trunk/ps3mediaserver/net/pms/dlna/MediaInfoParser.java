@@ -80,7 +80,7 @@ public class MediaInfoParser {
 							if (key.equals("Format") || key.startsWith("Format_Version") || key.startsWith("Format_Profile")) {
 								getFormat(step, media, currentAudioTrack, value);
 							} else if (key.equals("Duration/String1") && step == MediaInfo.StreamKind.General) {
-								media.duration = getDuration(value);
+								media.setDuration(getDuration(value));
 							} else if (key.equals("Codec_Settings_QPel") && step == MediaInfo.StreamKind.Video) {
 								media.putExtra(FormatConfiguration.MI_QPEL, value);
 							} else if (key.equals("Codec_Settings_GMC") && step == MediaInfo.StreamKind.Video) {
@@ -98,6 +98,12 @@ public class MediaInfoParser {
 									currentAudioTrack.lang = getLang(value);
 								} else if (step == MediaInfo.StreamKind.Text) {
 									currentSubTrack.lang = getLang(value);
+								}
+							} else if (key.equals("Title")) {
+								if (step == MediaInfo.StreamKind.Audio) {
+									currentAudioTrack.flavor = getFlavor(value);
+								} else if (step == MediaInfo.StreamKind.Text) {
+									currentSubTrack.flavor = getFlavor(value);
 								}
 							} else if (key.equals("Width")) {
 								media.width = getPixelValue(value);
@@ -373,9 +379,9 @@ public class MediaInfoParser {
 		}
 		value = value.trim();
 
-		// Audio is DTS-ES (6.1 channels) but MEncoder only supports either 6 or 2 for channel values so we use 6
+		// Audio is DTS-ES (6.1 channels) but MEncoder only supports either 2, 4, 6 or 8 for channel values so we use 8
 		if (value.equals("7 / 6")) {
-			value = "6";
+			value = "8";
 		}
 
 		try {
@@ -423,7 +429,12 @@ public class MediaInfoParser {
 		return value;
 	}
 
-	public static String getDuration(String value) {
+	public static String getFlavor(String value) {
+		value = value.trim();
+		return value;
+	}
+
+	private static double getDuration(String value) {
 		int h = 0, m = 0, s = 0;
 		StringTokenizer st = new StringTokenizer(value, " ");
 		while (st.hasMoreTokens()) {
@@ -446,7 +457,7 @@ public class MediaInfoParser {
 				}
 			}
 		}
-		return String.format("%02d:%02d:%02d.00", h, m, s);
+		return (h * 3600) + (m * 60) + s;
 	}
 
 	public static byte[] getCover(String based64Value) {
