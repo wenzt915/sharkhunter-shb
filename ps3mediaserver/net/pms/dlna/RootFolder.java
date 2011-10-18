@@ -49,7 +49,6 @@ import net.pms.external.AdditionalFoldersAtRoot;
 import net.pms.external.ExternalFactory;
 import net.pms.external.ExternalListener;
 import net.pms.gui.IFrame;
-import net.pms.newgui.LooksFrame;
 import net.pms.remote.RemoteFolder;
 import net.pms.remote.RemoteServer;
 import net.pms.xmlwise.Plist;
@@ -75,6 +74,7 @@ public class RootFolder extends DLNAResource {
 	
 	public RootFolder(String tag) {
 		id = "0";
+		setIndexId(0);
 		this.tag=tag;
 	}
 
@@ -192,12 +192,9 @@ public class RootFolder extends DLNAResource {
 		defaultRenderer = RendererConfiguration.getDefaultConf();
 		scan(this);
 		IFrame frame = PMS.get().getFrame();
-		if (frame instanceof LooksFrame) {
-			LooksFrame looksframe = (LooksFrame) frame;
-			looksframe.getFt().setScanLibraryEnabled(true);
-		}
+		frame.setScanLibraryEnabled(true);
 		PMS.get().getDatabase().cleanup();
-		PMS.get().getFrame().setStatusLine(null);
+		frame.setStatusLine(null);
 	}
 
 	public void stopscan() {
@@ -219,7 +216,6 @@ public class RootFolder extends DLNAResource {
 					}
 					if (child.discovered) {
 						child.refreshChildren();
-						child.closeChildren(child.childrenNumber(), true);
 					} else {
 						if (child instanceof DVDISOFile || child instanceof DVDISOTitle) // ugly hack
 						{
@@ -227,7 +223,6 @@ public class RootFolder extends DLNAResource {
 						}
 						child.discoverChildren();
 						child.analyzeChildren(-1);
-						child.closeChildren(0, false);
 						child.discovered = true;
 					}
 					int count = child.children.size();
@@ -245,14 +240,14 @@ public class RootFolder extends DLNAResource {
 		List<RealFile> res = new ArrayList<RealFile>();
 		File files[];
 		try {
-			files = PMS.get().loadFoldersConf(configuration.getFolders(tag), true);
+			files = PMS.get().getFoldersConf(tag, true);
 			if (files == null || files.length == 0) {
 				files = File.listRoots();
 			}
 			for (File f : files) {
 				res.add(new RealFile(f));
 			}
-		} catch (IOException e) {
+		} catch (Exception e) {
 			logger.error("Failed to load configured folders", e);
 		}
 		return res;
@@ -821,6 +816,11 @@ public class RootFolder extends DLNAResource {
 			}
 		}
 		return res;
+	}
+
+	@Override
+	public String toString() {
+		return "RootFolder["+children+"]";
 	}
 }
  

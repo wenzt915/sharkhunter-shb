@@ -101,18 +101,9 @@ public class DLNAMediaDatabase implements Runnable {
 		} catch (SQLException se) {
 			logger.debug("Database not created or corrupted");
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (stmt != null) {
-					stmt.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(rs);
+			close(stmt);
+			close(conn);
 		}
 		boolean force_reinit = !PMS.VERSION.equals(version); // here we can force a deletion for a specific version
 		if (force || count == -1 || force_reinit) {
@@ -134,13 +125,13 @@ public class DLNAMediaDatabase implements Runnable {
 			} catch (SQLException se) {
 			}
 			try {
-				StringBuffer sb = new StringBuffer();
+				StringBuilder sb = new StringBuilder();
 				sb.append("CREATE TABLE FILES (");
 				sb.append("  ID                INT AUTO_INCREMENT");
 				sb.append(", FILENAME          VARCHAR2(1024)       NOT NULL");
 				sb.append(", MODIFIED          TIMESTAMP            NOT NULL");
 				sb.append(", TYPE              INT");
-				sb.append(", DURATION          VARCHAR2(30)");
+				sb.append(", DURATION          DOUBLE");
 				sb.append(", BITRATE           INT");
 				sb.append(", WIDTH             INT");
 				sb.append(", HEIGHT            INT");
@@ -158,11 +149,12 @@ public class DLNAMediaDatabase implements Runnable {
 				sb.append(", MUXINGMODE        VARCHAR2(32)");
 				sb.append(", constraint PK1 primary key (FILENAME, MODIFIED, ID))");
 				executeUpdate(conn, sb.toString());
-				sb = new StringBuffer();
+				sb = new StringBuilder();
 				sb.append("CREATE TABLE AUDIOTRACKS (");
 				sb.append("  FILEID            INT              NOT NULL");
 				sb.append(", ID                INT              NOT NULL");
 				sb.append(", LANG              VARCHAR2(3)");
+				sb.append(", FLAVOR            VARCHAR2(128)");
 				sb.append(", NRAUDIOCHANNELS   NUMERIC");
 				sb.append(", SAMPLEFREQ        VARCHAR2(16)");
 				sb.append(", CODECA            VARCHAR2(32)");
@@ -177,11 +169,12 @@ public class DLNAMediaDatabase implements Runnable {
 				sb.append(", MUXINGMODE        VARCHAR2(32)");
 				sb.append(", constraint PKAUDIO primary key (FILEID, ID))");
 				executeUpdate(conn, sb.toString());
-				sb = new StringBuffer();
+				sb = new StringBuilder();
 				sb.append("CREATE TABLE SUBTRACKS (");
 				sb.append("  FILEID            INT              NOT NULL");
 				sb.append(", ID                INT              NOT NULL");
 				sb.append(", LANG              VARCHAR2(3)");
+				sb.append(", FLAVOR            VARCHAR2(128)");
 				sb.append(", TYPE              INT");
 				sb.append(", constraint PKSUB primary key (FILEID, ID))");
 
@@ -202,12 +195,7 @@ public class DLNAMediaDatabase implements Runnable {
 			} catch (SQLException se) {
 				logger.info("Error in table creation: " + se.getMessage());
 			} finally {
-				if (conn != null) {
-					try {
-						conn.close();
-					} catch (SQLException e) {
-					}
-				}
+			    close(conn);
 			}
 		} else {
 			logger.debug("Database file count: " + count);
@@ -241,18 +229,9 @@ public class DLNAMediaDatabase implements Runnable {
 			logger.error(null, se);
 			return false;
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (stmt != null) {
-					stmt.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(rs);
+			close(stmt);
+			close(conn);
 		}
 		return found;
 	}
@@ -271,7 +250,7 @@ public class DLNAMediaDatabase implements Runnable {
 			while (rs.next()) {
 				DLNAMediaInfo media = new DLNAMediaInfo();
 				int id = rs.getInt("ID");
-				media.duration = rs.getString("DURATION");
+				media.setDuration(toDouble(rs,"DURATION"));
 				media.bitrate = rs.getInt("BITRATE");
 				media.width = rs.getInt("WIDTH");
 				media.height = rs.getInt("HEIGHT");
@@ -298,6 +277,7 @@ public class DLNAMediaDatabase implements Runnable {
 					DLNAMediaAudio audio = new DLNAMediaAudio();
 					audio.id = subrs.getInt("ID");
 					audio.lang = subrs.getString("LANG");
+					audio.flavor = subrs.getString("FLAVOR");
 					audio.nrAudioChannels = subrs.getInt("NRAUDIOCHANNELS");
 					audio.sampleFrequency = subrs.getString("SAMPLEFREQ");
 					audio.codecA = subrs.getString("CODECA");
@@ -322,6 +302,7 @@ public class DLNAMediaDatabase implements Runnable {
 					DLNAMediaSubtitle sub = new DLNAMediaSubtitle();
 					sub.id = subrs.getInt("ID");
 					sub.lang = subrs.getString("LANG");
+					sub.flavor = subrs.getString("FLAVOR");
 					sub.type = subrs.getInt("TYPE");
 					media.subtitlesCodes.add(sub);
 				}
@@ -334,20 +315,19 @@ public class DLNAMediaDatabase implements Runnable {
 			logger.error(null, se);
 			return null;
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (stmt != null) {
-					stmt.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(rs);
+			close(stmt);
+			close(conn);
 		}
 		return list;
+	}
+	
+	private Double toDouble(ResultSet rs, String column) throws SQLException {
+		Object obj = rs.getObject(column);
+		if (obj instanceof Double) {
+			return (Double) obj;
+		}
+		return null;
 	}
 
 	public synchronized void insertData(String name, long modified, int type, DLNAMediaInfo media) {
@@ -360,7 +340,11 @@ public class DLNAMediaDatabase implements Runnable {
 			ps.setTimestamp(2, new Timestamp(modified));
 			ps.setInt(3, type);
 			if (media != null) {
-				ps.setString(4, media.duration);
+				if (media.getDuration() != null) {
+					ps.setDouble(4, media.getDurationInSeconds());
+				} else {
+					ps.setNull(4, Types.DOUBLE);
+				}
 				ps.setInt(5, media.bitrate);
 				ps.setInt(6, media.width);
 				ps.setInt(7, media.height);
@@ -409,30 +393,31 @@ public class DLNAMediaDatabase implements Runnable {
 			if (media != null && id > -1) {
 				PreparedStatement insert = null;
 				if (media.audioCodes.size() > 0) {
-					insert = conn.prepareStatement("INSERT INTO AUDIOTRACKS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+					insert = conn.prepareStatement("INSERT INTO AUDIOTRACKS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 				}
 				for (DLNAMediaAudio audio : media.audioCodes) {
 					insert.clearParameters();
 					insert.setInt(1, id);
 					insert.setInt(2, audio.id);
 					insert.setString(3, audio.lang);
-					insert.setInt(4, audio.nrAudioChannels);
-					insert.setString(5, audio.sampleFrequency);
-					insert.setString(6, audio.codecA);
-					insert.setInt(7, audio.bitsperSample);
-					insert.setString(8, StringUtils.trimToEmpty(audio.album));
-					insert.setString(9, StringUtils.trimToEmpty(audio.artist));
-					insert.setString(10, StringUtils.trimToEmpty(audio.songname));
-					insert.setString(11, StringUtils.trimToEmpty(audio.genre));
-					insert.setInt(12, audio.year);
-					insert.setInt(13, audio.track);
-					insert.setInt(14, audio.delay);
-					insert.setString(15, StringUtils.trimToEmpty(audio.muxingModeAudio));
+					insert.setString(4, audio.flavor);
+					insert.setInt(5, audio.nrAudioChannels);
+					insert.setString(6, audio.sampleFrequency);
+					insert.setString(7, audio.codecA);
+					insert.setInt(8, audio.bitsperSample);
+					insert.setString(9, StringUtils.trimToEmpty(audio.album));
+					insert.setString(10, StringUtils.trimToEmpty(audio.artist));
+					insert.setString(11, StringUtils.trimToEmpty(audio.songname));
+					insert.setString(12, StringUtils.trimToEmpty(audio.genre));
+					insert.setInt(13, audio.year);
+					insert.setInt(14, audio.track);
+					insert.setInt(15, audio.delay);
+					insert.setString(16, StringUtils.trimToEmpty(audio.muxingModeAudio));
 					insert.executeUpdate();
 				}
 
 				if (media.subtitlesCodes.size() > 0) {
-					insert = conn.prepareStatement("INSERT INTO SUBTRACKS VALUES (?, ?, ?, ?)");
+					insert = conn.prepareStatement("INSERT INTO SUBTRACKS VALUES (?, ?, ?, ?, ?)");
 				}
 				for (DLNAMediaSubtitle sub : media.subtitlesCodes) {
 					if (sub.file == null) { // no save of external subtitles
@@ -440,13 +425,12 @@ public class DLNAMediaDatabase implements Runnable {
 						insert.setInt(1, id);
 						insert.setInt(2, sub.id);
 						insert.setString(3, sub.lang);
-						insert.setInt(4, sub.type);
+						insert.setString(4, sub.flavor);
+						insert.setInt(5, sub.type);
 						insert.executeUpdate();
 					}
 				}
-				if (insert != null) {
-					insert.close();
-				}
+				close(insert);
 			}
 		} catch (SQLException se) {
 			if (se.getMessage().contains("[23001")) {
@@ -455,15 +439,8 @@ public class DLNAMediaDatabase implements Runnable {
 				logger.error(null, se);
 			}
 		} finally {
-			try {
-				if (ps != null) {
-					ps.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(ps);
+			close(conn);
 		}
 	}
 
@@ -488,15 +465,8 @@ public class DLNAMediaDatabase implements Runnable {
 				logger.error(null, se);
 			}
 		} finally {
-			try {
-				if (ps != null) {
-					ps.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(ps);
+			close(conn);
 		}
 	}
 
@@ -523,18 +493,9 @@ public class DLNAMediaDatabase implements Runnable {
 			logger.error(null, se);
 			return null;
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (ps != null) {
-					ps.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(rs);
+			close(ps);
+			close(conn);
 		}
 		return list;
 	}
@@ -578,12 +539,7 @@ public class DLNAMediaDatabase implements Runnable {
 		} catch (SQLException se) {
 			logger.error(null, se);
 		} finally {
-			try {
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(conn);
 		}
 	}
 
@@ -608,20 +564,41 @@ public class DLNAMediaDatabase implements Runnable {
 			logger.error(null, se);
 			return null;
 		} finally {
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (ps != null) {
-					ps.close();
-				}
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-			}
+			close(rs);
+			close(ps);
+			close(conn);
 		}
 		return list;
+	}
+
+	private void close(ResultSet rs) {
+		try {
+			if (rs != null) {
+				rs.close();
+			}
+		} catch (SQLException e) {
+			logger.error("error during closing:" + e.getMessage(), e);
+		}
+	}
+
+	private void close(Statement ps) {
+		try {
+			if (ps != null) {
+				ps.close();
+			}
+		} catch (SQLException e) {
+			logger.error("error during closing:" + e.getMessage(), e);
+		}
+	}
+
+	private void close(Connection conn) {
+		try {
+			if (conn != null) {
+				conn.close();
+			}
+		} catch (SQLException e) {
+			logger.error("error during closing:" + e.getMessage(), e);
+		}
 	}
 
 	public synchronized boolean isScanLibraryRunning() {

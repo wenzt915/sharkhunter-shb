@@ -260,7 +260,7 @@ public class RemoteClient extends Thread {
 			}
 			catch (Exception e) {
 				logger.trace("oops "+e);
-				return;
+			//	return;
 			}
 		}
 	}

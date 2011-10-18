@@ -102,6 +102,8 @@ public class MEncoderVideo extends Player {
 	private JTextField decode;
 	private JTextField langs;
 	private JTextField defaultsubs;
+	private JTextField forcedsub;
+	private JTextField forcedtags;
 	private JTextField defaultaudiosubs;
 	private JTextField defaultfont;
 	private JComboBox subcp;
@@ -209,7 +211,6 @@ public class MEncoderVideo extends Player {
 		cmp.setFont(cmp.getFont().deriveFont(Font.BOLD));
 
 		mencodermt = new JCheckBox(Messages.getString("MEncoderVideo.35"));
-		mencodermt.setFont(mencodermt.getFont().deriveFont(Font.BOLD));
 		mencodermt.setContentAreaFilled(false);
 		if (configuration.getMencoderMT()) {
 			mencodermt.setSelected(true);
@@ -287,7 +288,7 @@ public class MEncoderVideo extends Player {
 					audio.codecA = "ac3";
 					fakemedia.codecV = "mpeg4";
 					fakemedia.container = "matroska";
-					fakemedia.duration = "00:45:00";
+					fakemedia.setDuration(45d*60);
 					audio.nrAudioChannels = 2;
 					fakemedia.width = 1280;
 					fakemedia.height = 720;
@@ -399,7 +400,6 @@ public class MEncoderVideo extends Player {
 
 		videoremux = new JCheckBox("<html>" + Messages.getString("MEncoderVideo.38") + "</html>");
 		videoremux.setContentAreaFilled(false);
-		videoremux.setFont(videoremux.getFont().deriveFont(Font.BOLD));
 		if (configuration.isMencoderMuxWhenCompatible()) {
 			videoremux.setSelected(true);
 		}
@@ -471,7 +471,45 @@ public class MEncoderVideo extends Player {
 				configuration.setMencoderSubLanguages(defaultsubs.getText());
 			}
 		});
-		builder.add(defaultsubs, cc.xyw(3, 27, 8));
+
+		builder.addLabel(Messages.getString("MEncoderVideo.94"), cc.xy(5, 27));
+		forcedsub = new JTextField(configuration.getMencoderForcedSubLanguage());
+		forcedsub.addKeyListener(new KeyListener() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+			}
+
+			@Override
+			public void keyTyped(KeyEvent e) {
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e) {
+				configuration.setMencoderForcedSubLanguage(forcedsub.getText());
+			}
+		});
+
+		builder.addLabel(Messages.getString("MEncoderVideo.95"), cc.xy(9, 27));
+		forcedtags = new JTextField(configuration.getMencoderForcedSubTags());
+		forcedtags.addKeyListener(new KeyListener() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+			}
+
+			@Override
+			public void keyTyped(KeyEvent e) {
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e) {
+				configuration.setMencoderForcedSubTags(forcedtags.getText());
+			}
+		});
+		builder.add(defaultsubs, cc.xyw(3, 27, 2));
+
+		builder.add(forcedsub, cc.xy(7, 27));
+
+		builder.add(forcedtags, cc.xyw(11, 27, 5));
 
 		builder.addLabel(Messages.getString("MEncoderVideo.10"), cc.xy(1, 29));
 		defaultaudiosubs = new JTextField(configuration.getMencoderAudioSubLanguages());
@@ -1012,7 +1050,11 @@ public class MEncoderVideo extends Player {
 		return bitrates;
 	}
 
-	private String addMaximumBitrateConstraints(String encodeSettings, DLNAMediaInfo media, String quality, RendererConfiguration mediaRenderer) {
+	/**
+	 * Note: This is not exact, the bitrate can go above this but it is generally pretty good.
+	 * @return The maximum bitrate the video should be along with the buffer size using MEncoder vars
+	 */
+	private String addMaximumBitrateConstraints(String encodeSettings, DLNAMediaInfo media, String quality, RendererConfiguration mediaRenderer, String audioType) {
 		int defaultMaxBitrates[] = getVideoBitrateConfig(configuration.getMaximumBitrate());
 		int rendererMaxBitrates[] = new int[2];
 		if (mediaRenderer.getMaxVideoBitrate() != null) {
@@ -1022,10 +1064,12 @@ public class MEncoderVideo extends Player {
 			defaultMaxBitrates = rendererMaxBitrates;
 		}
 		if (defaultMaxBitrates[0] > 0 && !quality.contains("vrc_buf_size") && !quality.contains("vrc_maxrate") && !quality.contains("vbitrate")) {
+			// Convert value from Mb to Kb
 			defaultMaxBitrates[0] = 1000 * defaultMaxBitrates[0];
-			if (defaultMaxBitrates[0] > 60000) {
-				defaultMaxBitrates[0] = 60000;
-			}
+
+			// Halve it since it seems to send up to 1 second of video in advance
+			defaultMaxBitrates[0] = defaultMaxBitrates[0] / 2;
+
 			int bufSize = 1835;
 			if (media.isHDVideo()) {
 				bufSize = defaultMaxBitrates[0] / 3;
@@ -1041,6 +1085,23 @@ public class MEncoderVideo extends Player {
 			if (mediaRenderer.isDefaultVBVSize() && rendererMaxBitrates[1] == 0) {
 				bufSize = 1835;
 			}
+
+			// Make room for audio
+			// If audio is PCM, subtract 4600kb/s
+			if ("pcm".equals(audioType)) {
+				defaultMaxBitrates[0] = defaultMaxBitrates[0] - 4600;
+			}
+			// If audio is DTS, subtract 1510kb/s
+			else if ("dts".equals(audioType)) {
+				defaultMaxBitrates[0] = defaultMaxBitrates[0] - 1510;
+			}
+			// If audio is AC3, subtract 640kb/s to be safe
+			else if ("ac3".equals(audioType)) {
+				defaultMaxBitrates[0] = defaultMaxBitrates[0] - 640;
+			}
+
+			// Round down to the nearest Mb
+			defaultMaxBitrates[0] = defaultMaxBitrates[0] / 1000 * 1000;
 
 			encodeSettings += ":vrc_maxrate=" + defaultMaxBitrates[0] + ":vrc_buf_size=" + bufSize;
 		}
@@ -1079,7 +1140,7 @@ public class MEncoderVideo extends Player {
 		// don't honour "Switch to tsMuxeR..." if the resource is being streamed via an MEncoder entry in
 		// the #--TRANSCODE--# folder
 		boolean forceMencoder = !configuration.getHideTranscodeEnabled()
-			&& dlna.noName
+			&& dlna.isNoName()
 			&& (dlna.getParent() instanceof FileTranscodeVirtualFolder);
 
 		ovccopy = false;
@@ -1226,11 +1287,18 @@ public class MEncoderVideo extends Player {
 			int cbr_bitrate = params.mediaRenderer.getCBRVideoBitrate();
 			String cbr_settings = (cbr_bitrate > 0) ? ":vrc_buf_size=1835:vrc_minrate=" + cbr_bitrate + ":vrc_maxrate=" + cbr_bitrate + ":vbitrate=" + cbr_bitrate : "";
 			String encodeSettings = "-lavcopts autoaspect=1:vcodec=" + vcodec +
-				(wmv ? ":acodec=wmav2:abitrate=256" : (cbr_settings + ":acodec=" + (configuration.isMencoderAc3Fixed() ? "ac3_fixed" : "ac3") +
+				(wmv ? ":acodec=wmav2:abitrate=448" : (cbr_settings + ":acodec=" + (configuration.isMencoderAc3Fixed() ? "ac3_fixed" : "ac3") +
 				":abitrate=" + CodecUtil.getAC3Bitrate(configuration, params.aid))) +
 				":threads=" + (wmv ? 1 : configuration.getMencoderMaxThreads()) + ":" + mainConfig;
 
-			encodeSettings = addMaximumBitrateConstraints(encodeSettings, media, mainConfig, params.mediaRenderer);
+			String audioType = "ac3";
+			if (dts) {
+				audioType = "dts";
+			} else if (pcm || encodedaudiopassthrough) {
+				audioType = "pcm";
+			}
+
+			encodeSettings = addMaximumBitrateConstraints(encodeSettings, media, mainConfig, params.mediaRenderer, audioType);
 			st = new StringTokenizer(encodeSettings, " ");
 			int oldc = overriddenMainArgs.length;
 			overriddenMainArgs = Arrays.copyOf(overriddenMainArgs, overriddenMainArgs.length + st.countTokens());
@@ -1354,32 +1422,7 @@ public class MEncoderVideo extends Player {
 
 		String cmdArray[] = new String[18 + args().length];
 
-		// Use the normal MEncoder build by default
 		cmdArray[0] = executable();
-
-		boolean isMultiCore = configuration.getNumberOfCpuCores() > 1;
-
-		// Figure out which version of MEncoder we want to use
-		if (
-			(media.muxingMode != null && media.muxingMode.equals("Header stripping")) ||
-			(params.sid != null && params.sid.type == DLNAMediaSubtitle.VOBSUB)
-		) {
-			// Use the newer version of MEncoder
-			if (isMultiCore && configuration.getMencoderMT()) {
-				if (new File(configuration.getMencoderAlternateMTPath()).exists()) {
-					cmdArray[0] = configuration.getMencoderAlternateMTPath();
-				}
-			} else {
-				if (new File(configuration.getMencoderAlternatePath()).exists()) {
-					cmdArray[0] = configuration.getMencoderAlternatePath();
-				}
-			}
-		} else if (isMultiCore && configuration.getMencoderMT()) {
-			// Use the older MEncoder with multithreading
-			if (new File(configuration.getMencoderMTPath()).exists()) {
-				cmdArray[0] = configuration.getMencoderMTPath();
-			}
-		}
 
 		// Choose which time to seek to
 		cmdArray[1] = "-ss";
@@ -1575,7 +1618,7 @@ public class MEncoderVideo extends Player {
 									":acodec=" + (configuration.isMencoderAc3Fixed() ? "ac3_fixed" : "ac3") +
 									":abitrate=" + CodecUtil.getAC3Bitrate(configuration, params.aid) +
 									":threads=" + configuration.getMencoderMaxThreads() + ":" + sArgs[s + 1];
-								addMaximumBitrateConstraints(cmdArray[c + 1], media, cmdArray[c + 1], params.mediaRenderer);
+								addMaximumBitrateConstraints(cmdArray[c + 1], media, cmdArray[c + 1], params.mediaRenderer, "");
 								sArgs[s + 1] = "-quality";
 								s++;
 							}
@@ -1623,7 +1666,7 @@ public class MEncoderVideo extends Player {
 			}
 		}
 
-		if ((pcm || dts || encodedaudiopassthrough || mux) || (configuration.isMencoderNoOutOfSync() && !noMC0NoSkip)) {
+		if ((pcm || dts || encodedaudiopassthrough || mux) || (configuration.isMencoderNoOutOfSync() && !noMC0NoSkip) || dvd) {
 			cmdArray = Arrays.copyOf(cmdArray, cmdArray.length + 3);
 			cmdArray[cmdArray.length - 5] = "-mc";
 			cmdArray[cmdArray.length - 4] = "0";
@@ -1765,7 +1808,7 @@ public class MEncoderVideo extends Player {
 				// it seems the -really-quiet prevents mencoder to stop the pipe output after some time...
 				// -mc 0.1 make the DTS-HD extraction works better with latest mencoder builds, and makes no impact on the regular DTS one
 				String ffmpegLPCMextract[] = new String[]{
-					configuration.getMencoderPath(),
+					executable(), 
 					"-ss", "0",
 					fileName,
 					"-really-quiet",

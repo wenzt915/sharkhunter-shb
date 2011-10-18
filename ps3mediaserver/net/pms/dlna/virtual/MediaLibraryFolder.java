@@ -109,7 +109,12 @@ public class MediaLibraryFolder extends VirtualFolder {
 	}
 
 	@Override
-	public boolean refreshChildren() {
+	public boolean isRefreshNeeded() {
+		return true;
+	}
+
+	@Override
+	public void refreshChildren() {
 		ArrayList<File> list = null;
 		ArrayList<String> strings = null;
 		int expectedOutput = 0;
@@ -197,6 +202,6 @@ public class MediaLibraryFolder extends VirtualFolder {
 			}
 		}
 
-		return removedFiles.size() != 0 || addedFiles.size() != 0 || removedString.size() != 0 || addedString.size() != 0;
+		//return removedFiles.size() != 0 || addedFiles.size() != 0 || removedString.size() != 0 || addedString.size() != 0;
 	}
 }

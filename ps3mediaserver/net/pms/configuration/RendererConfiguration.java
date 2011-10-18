@@ -4,7 +4,6 @@ import java.io.File;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
@@ -14,8 +13,6 @@ import net.pms.dlna.DLNAResource;
 import net.pms.dlna.MediaInfoParser;
 import net.pms.dlna.RootFolder;
 import net.pms.formats.Format;
-import net.pms.io.OutputParams;
-import net.pms.io.ProcessWrapperImpl;
 import net.pms.network.HTTPResource;
 
 import org.apache.commons.configuration.ConfigurationException;
@@ -34,6 +31,7 @@ public class RendererConfiguration {
 	private static final Logger logger = LoggerFactory.getLogger(RendererConfiguration.class);
 	private static ArrayList<RendererConfiguration> renderersConfs;
 	private static RendererConfiguration defaultConf;
+	private static Map<InetAddress, RendererConfiguration> addressAssociation = new HashMap<InetAddress, RendererConfiguration>();
 
 	public static RendererConfiguration getDefaultConf() {
 		return defaultConf;
@@ -69,8 +67,6 @@ public class RendererConfiguration {
 		}
 	}
 
-	private InetAddress currentRendererAddress;
-	private int speedInMbits;
 	private RootFolder rootFolder;
 
 	public static void resetAllRenderers() {
@@ -87,88 +83,26 @@ public class RendererConfiguration {
 	}
 	
 	public void addFolderLimit(DLNAResource res) {
-		if(rootFolder!=null)	
-			rootFolder.setFolderLim(res);
-	}
+        if(rootFolder!=null)    
+                rootFolder.setFolderLim(res);
+}
 
-	public int getSpeedInMbits() {
-		return speedInMbits;
-	}
-
-	public InetAddress getCurrentRendererAddress() {
-		return currentRendererAddress;
-	}
 
 	public void associateIP(InetAddress sa) {
-		currentRendererAddress = sa;
-		String ip = currentRendererAddress.getHostAddress();
-		String hostname = currentRendererAddress.getCanonicalHostName();
+		String ip = sa.getHostAddress();
+		String hostname = sa.getCanonicalHostName();
 
 		if (!ip.equals(hostname)) {
 			logger.info("Renderer " + this + " found on this address: " + hostname + " (" + ip + ")");
 		} else {
 			logger.info("Renderer " + this + " found on this address: " + ip);
 		}
-
-		// let's get that speed
-		OutputParams op = new OutputParams(null);
-		op.log = true;
-		op.maxBufferSize = 1;
-		String count = Platform.isWindows() ? "-n" : "-c";
-		String size = Platform.isWindows() ? "-l" : "-s";
-		final ProcessWrapperImpl pw = new ProcessWrapperImpl(new String[]{"ping", count, "3", size, "64000", sa.getHostAddress()}, op, true, false);
-		Runnable r = new Runnable() {
-			public void run() {
-				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e) {
-				}
-				pw.stopProcess();
-			}
-		};
-		Thread failsafe = new Thread(r);
-		failsafe.start();
-		pw.run();
-		List<String> ls = pw.getOtherResults();
-		int time = 0;
-		int c = 0;
-		for (String line : ls) {
-			int msPos = line.indexOf("ms");
-			try {
-				if (msPos > -1) {
-					String timeString = line.substring(line.lastIndexOf("=", msPos) + 1, msPos).trim();
-					time += Double.parseDouble(timeString);
-					c++;
-				}
-			} catch (Exception e) {
-				// no big deal
-			}
-		}
-		if (c > 0) {
-			time = (time / c);
-		}
-		if (time > 0) {
-			speedInMbits = (int) (1024 / time);
-			logger.info("Renderer " + this + " has an estimated network speed of: " + speedInMbits + " Mb/s");
-		}
+		addressAssociation.put(sa, this);
+		SpeedStats.getInstance().getSpeedInMBits(sa);
 	}
 
 	public static RendererConfiguration getRendererConfigurationBySocketAddress(InetAddress sa) {
-		for (RendererConfiguration r : renderersConfs) {
-			if (sa.equals(r.currentRendererAddress)) {
-				return r;
-			}
-		}
-		return null;
-	}
-
-	public static RendererConfiguration getRendererConfiguration(int mediarenderer) {
-		for (RendererConfiguration r : renderersConfs) {
-			if (r.rank == mediarenderer) {
-				return r;
-			}
-		}
-		return defaultConf;
+		return addressAssociation.get(sa);
 	}
 
 	public static RendererConfiguration getRendererConfigurationByUA(String userAgentString) {
@@ -181,18 +115,8 @@ public class RendererConfiguration {
 	}
 
 	private static RendererConfiguration manageRendererMatch(RendererConfiguration r) {
-		if (r.currentRendererAddress == null) {
-			return r; // no other clients with the same renderer on this network (yet)
-		} else {
-			// seems there's another same machine on the network
+		if (addressAssociation.values().contains(r)) {
 			logger.info("Another renderer like " + r.getRendererName() + " was found!");
-			try {
-				RendererConfiguration duplicated = new RendererConfiguration(r.configurationFile);
-				renderersConfs.add(duplicated);
-				return duplicated;
-			} catch (ConfigurationException e) {
-				logger.info("Serious error in adding a duplicated renderer: " + e.getMessage());
-			}
 		}
 		return r;
 	}
@@ -211,16 +135,16 @@ public class RendererConfiguration {
 	/*
 	 * 
 	 */
-	private File configurationFile;
-	private PropertiesConfiguration configuration;
+	private final File configurationFile;
+	private final PropertiesConfiguration configuration;
 	private FormatConfiguration formatConfiguration;
 
 	public FormatConfiguration getFormatConfiguration() {
 		return formatConfiguration;
 	}
 	private int rank;
-	private Map<String, String> mimes;
-	private Map<String, String> DLNAPN;
+	private final Map<String, String> mimes;
+	private final Map<String, String> DLNAPN;
 
 	public int getRank() {
 		return rank;
@@ -257,12 +181,12 @@ public class RendererConfiguration {
 	private static final String IMAGE = "Image";
 	private static final String SEEK_BY_TIME = "SeekByTime";
 
-	public static final String MPEGPSAC3 = "MPEGAC3";
-	public static final String MPEGTSAC3 = "MPEGTSAC3";
-	public static final String WMV = "WMV";
-	public static final String LPCM = "LPCM";
-	public static final String WAV = "WAV";
-	public static final String MP3 = "MP3";
+	private static final String MPEGPSAC3 = "MPEGAC3";
+	private static final String MPEGTSAC3 = "MPEGTSAC3";
+	private static final String WMV = "WMV";
+	private static final String LPCM = "LPCM";
+	private static final String WAV = "WAV";
+	private static final String MP3 = "MP3";
 
 	private static final String TRANSCODE_AUDIO = "TranscodeAudio";
 	private static final String TRANSCODE_VIDEO = "TranscodeVideo";
@@ -290,6 +214,8 @@ public class RendererConfiguration {
 	private static final String MEDIAPARSERV2_THUMB = "MediaParserV2_ThumbnailGeneration";
 	private static final String SUPPORTED = "Supported";
 	private static final String CUSTOM_MENCODER_QUALITYSETTINGS = "CustomMencoderQualitySettings";
+	private static final String SHOW_AUDIO_METADATA = "ShowAudioMetadata";
+	private static final String SHOW_SUB_METADATA = "ShowSubMetadata";
 	private static final String DLNA_TREE_HACK = "CreateDLNATreeFaster";
 	private static final String CHUNKED_TRANSFER = "ChunkedTransfer";
 
@@ -457,9 +383,7 @@ public class RendererConfiguration {
 	public String getMimeType(String mimetype) {
 		if (isMediaParserV2()) {
 			if (mimetype != null && mimetype.equals(HTTPResource.VIDEO_TRANSCODE)) {
-				logger.trace("render "+toString()+" match mime "+mimetype);
 				mimetype = getFormatConfiguration().match(FormatConfiguration.MPEGPS, FormatConfiguration.MPEG2, FormatConfiguration.AC3);
-				logger.trace("matched mime "+mimetype+" trans "+isTranscodeToWMV());
 				if (isTranscodeToMPEGTSAC3()) {
 					mimetype = getFormatConfiguration().match(FormatConfiguration.MPEGTS, FormatConfiguration.MPEG2, FormatConfiguration.AC3);
 				} else if (isTranscodeToWMV()) {
@@ -480,7 +404,6 @@ public class RendererConfiguration {
 					mimetype = getFormatConfiguration().match(FormatConfiguration.MP3, null, null);
 				}
 			}
-			logger.trace("mime out "+mimetype);
 			return mimetype;
 		}
 		if (mimetype != null && mimetype.equals(HTTPResource.VIDEO_TRANSCODE)) {
@@ -524,24 +447,6 @@ public class RendererConfiguration {
 
 	public String getRendererName() {
 		return getString(RENDERER_NAME, Messages.getString("PMS.17"));
-	}
-
-	public String getRendererNameWithAddress() {
-		String s = getString(RENDERER_NAME, Messages.getString("PMS.17"));
-		if (currentRendererAddress != null) {
-			String ip = currentRendererAddress.getHostAddress();
-			String hostname = currentRendererAddress.getCanonicalHostName();
-
-			if (!ip.equals(hostname)) {
-				s = s + " [" + hostname + "]";
-			} else {
-				s = s + " [" + ip + "]";
-			}
-		}
-		if (speedInMbits > 0) {
-			s = "<html><p align=center>" + s + "<br><b>Speed: " + speedInMbits + " Mb/s</b></p></html>";
-		}
-		return s;
 	}
 
 	public String getRendererIcon() {
@@ -706,15 +611,23 @@ public class RendererConfiguration {
 		return (getBoolean(FORCE_JPG_THUMBNAILS, false) && MediaInfoParser.isValid()) || isBRAVIA();
 	}
 
+	public boolean isShowAudioMetadata() {
+		return getBoolean(SHOW_AUDIO_METADATA, true);
+	}
+
+	public boolean isShowSubMetadata() {
+		return getBoolean(SHOW_SUB_METADATA, true);
+	}
+
 	public boolean isDLNATreeHack() {
 		return getBoolean(DLNA_TREE_HACK, false) && MediaInfoParser.isValid();
 	}
-	
+
 	public boolean isChunkedTransfer() {
 		return getBoolean(CHUNKED_TRANSFER, false);
 	}
 	
 	public void setMaxVideoBitrate(String rate) {
-		configuration.addProperty(MAX_VIDEO_BITRATE, "("+rate+")");
+        configuration.addProperty(MAX_VIDEO_BITRATE, "("+rate+")");
 	}
 }

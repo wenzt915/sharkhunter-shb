@@ -24,12 +24,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-
-import org.apache.commons.lang.StringUtils;
 
 import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
@@ -37,8 +35,10 @@ import net.pms.dlna.DLNAMediaAudio;
 import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 import net.pms.dlna.RootFolder;
+import net.pms.dlna.Range;
 import net.pms.external.StartStopListenerDelegate;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,8 +52,8 @@ public class Request extends HTTPResource {
 	private final static String CONTENT_TYPE_UTF8 = "CONTENT-TYPE: text/xml; charset=\"utf-8\"";
 	private final static String CONTENT_TYPE = "Content-Type: text/xml; charset=\"utf-8\"";
 	private static SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
-	private String method;
-	private String argument;
+	private final String method;
+	private final String argument;
 	private String soapaction;
 	private String content;
 	private OutputStream output;
@@ -66,7 +66,8 @@ public class Request extends HTTPResource {
 	private RendererConfiguration mediaRenderer;
 	private String transferMode;
 	private String contentFeatures;
-	private double timeseek;
+	private Double timeseek;
+	private Double timeRangeEnd;
 	private long highRange;
 	private boolean http10;
 
@@ -112,6 +113,10 @@ public class Request extends HTTPResource {
 
 	public void setTimeseek(double timeseek) {
 		this.timeseek = timeseek;
+	}
+
+	public void setTimeRangeEnd(double timeRangeEnd) {
+		this.timeRangeEnd = timeRangeEnd;
 	}
 
 	public long getHighRange() {
@@ -181,12 +186,12 @@ public class Request extends HTTPResource {
 		} else if ((method.equals("GET") || method.equals("HEAD")) && argument.startsWith("get/")) {
 			String id = argument.substring(argument.indexOf("get/") + 4, argument.lastIndexOf("/"));
 			id = id.replace("%24", "$"); // popcorn hour ?
-			ArrayList<DLNAResource> files = getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
+			List<DLNAResource> files = getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
 			
 			if(files==null||files.size()==0) { // nothing found
 				String tmp=(String)PMS.getConfiguration().getCustomProperty("remote_control");
 				if(tmp!=null&&!tmp.equalsIgnoreCase("false")) {
-					ArrayList<RendererConfiguration> renders=PMS.get().getRenders();
+					List<RendererConfiguration> renders=PMS.get().getRenders();
 					for(int i=0;i<renders.size();i++) {
 						RendererConfiguration r=renders.get(i);
 						if(r.equals(mediaRenderer))
@@ -221,18 +226,19 @@ public class Request extends HTTPResource {
 						dlna.updateRender(mediaRenderer);
 					PMS.get().setBitrate(mediaRenderer,remap);
 					String name = dlna.getDisplayName(mediaRenderer);
-					inputStream = dlna.getInputStream(lowRange, highRange, timeseek, mediaRenderer);
+					inputStream = dlna.getInputStream(Range.create(lowRange, highRange, timeseek, timeRangeEnd), mediaRenderer);
 					if (inputStream == null) {
 						// No inputStream indicates that transcoding / remuxing probably crashed.
 						logger.error("There is no inputstream to return for " + name);
 					} else {
 						output(output, "Content-Type: " + getRendererMimeType(dlna.mimeType(), mediaRenderer));
-						if (dlna.media != null) {
-							if (StringUtils.isNotBlank(dlna.media.container)) {
-								name += " [container: " + dlna.media.container + "]";
+					    final DLNAMediaInfo media = dlna.getMedia();
+						if (media != null) {
+							if (StringUtils.isNotBlank(media.container)) {
+								name += " [container: " + media.container + "]";
 							}
-							if (StringUtils.isNotBlank(dlna.media.codecV)) {
-								name += " [video: " + dlna.media.codecV + "]";
+							if (StringUtils.isNotBlank(media.codecV)) {
+								name += " [video: " + media.codecV + "]";
 							}
 						}
 						PMS.get().getFrame().setStatusLine("Serving " + name);
@@ -465,7 +471,7 @@ public class Request extends HTTPResource {
 				else if (soapaction.contains("ContentDirectory:1#Search")) 
 					searchCriteria=getEnclosingValue(content,"<SearchCriteria>","</SearchCriteria>");
 
-				ArrayList<DLNAResource> files = getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
+				List<DLNAResource> files = getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
 						searchCriteria);
 				if (searchCriteria != null && files != null) {
 					searchCriteria=searchCriteria.toLowerCase();
@@ -474,9 +480,10 @@ public class Request extends HTTPResource {
 						if(res.isSearched())
 							continue;
 						boolean keep=res.getName().toLowerCase().indexOf(searchCriteria)!=-1;
-						if(res.media!=null) {
-							for(int j=0;j<res.media.audioCodes.size();j++) {
-								DLNAMediaAudio audio=res.media.audioCodes.get(j);
+						final DLNAMediaInfo media = res.getMedia();
+						if(media!=null) {
+							for(int j=0;j<media.audioCodes.size();j++) {
+								DLNAMediaAudio audio=media.audioCodes.get(j);
 								keep|=audio.album.toLowerCase().indexOf(searchCriteria)!=-1;
 								keep|=audio.artist.toLowerCase().indexOf(searchCriteria)!=-1;
 								keep|=audio.songname.toLowerCase().indexOf(searchCriteria)!=-1;
@@ -585,9 +592,10 @@ public class Request extends HTTPResource {
 				output(output, "Content-Length: " + cl);
 			}
 
-			if (timeseek > 0 && dlna != null) {
+		//	if (timeseek > 0 && dlna != null) {
+			if (timeseek !=null && dlna != null) {
 				String timeseekValue = DLNAMediaInfo.getDurationString(timeseek);
-				String timetotalValue = dlna.media.duration;
+				String timetotalValue = dlna.getMedia().getDurationString();
 				output(output, "TimeSeekRange.dlna.org: npt=" + timeseekValue + "-" + timetotalValue + "/" + timetotalValue);
 				output(output, "X-Seek-Range: npt=" + timeseekValue + "-" + timetotalValue + "/" + timetotalValue);
 			}

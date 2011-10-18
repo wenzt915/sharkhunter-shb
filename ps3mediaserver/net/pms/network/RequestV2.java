@@ -21,17 +21,19 @@ package net.pms.network;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
 import net.pms.dlna.DLNAMediaAudio;
 import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 import net.pms.encoders.Player;
+import net.pms.dlna.Range;
 import net.pms.external.StartStopListenerDelegate;
 import net.pms.formats.Format;
 import net.pms.PMS;
@@ -45,7 +47,6 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
 import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.stream.ChunkedStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +58,8 @@ public class RequestV2 extends HTTPResource {
 	private final static String CRLF = "\r\n";
 	private static SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
 	private static int BUFFER_SIZE = 8 * 1024;
-	int sendB = 0;
-	private String method;
+	private static final int[] MULTIPLIER = new int[] { 1, 60, 3600, 24*3600}; 
+	private final String method;
 
 	/**
 	 * A {@link String} that contains the argument with which this {@link RequestV2} was
@@ -66,7 +67,7 @@ public class RequestV2 extends HTTPResource {
 	 * separated by slashes. For example: "get/0$0$2$17/big_buck_bunny_1080p_h264.mov" or
 	 * "get/0$0$2$13/thumbnail0000Sintel.2010.1080p.mkv"
 	 */
-	private String argument;
+	private final String argument;
 	private String soapaction;
 	private String content;
 	private String objectID;
@@ -82,7 +83,7 @@ public class RequestV2 extends HTTPResource {
 	private RendererConfiguration mediaRenderer;
 	private String transferMode;
 	private String contentFeatures;
-	private double timeseek;
+	private final Range.Time range = new Range.Time();
 
 	/**
 	 * When sending an input stream, the highRange indicates which byte to stop at.  
@@ -135,12 +136,20 @@ public class RequestV2 extends HTTPResource {
 		this.contentFeatures = contentFeatures;
 	}
 
-	public double getTimeseek() {
-		return timeseek;
+	public void setTimeRangeStart(Double timeseek) {
+		this.range.setStart(timeseek);
 	}
 
-	public void setTimeseek(double timeseek) {
-		this.timeseek = timeseek;
+	public void setTimeRangeStartString(String str) {
+		setTimeRangeStart(convertTime(str));
+	}
+
+	public void setTimeRangeEnd(Double rangeEnd) {
+		this.range.setEnd(rangeEnd);
+	}
+
+	public void setTimeRangeEndString(String str) {
+		setTimeRangeEnd(convertTime(str));
 	}
 
 	/**
@@ -255,12 +264,12 @@ public class RequestV2 extends HTTPResource {
 			id = id.replace("%24", "$");
 
 			// Retrieve the DLNAresource itself.
-			ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
+			List<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(id, false, 0, 0, mediaRenderer);
 			
 			if(files==null||files.size()==0) { // nothing found
 				String tmp=(String)PMS.getConfiguration().getCustomProperty("remote_control");
 				if(tmp!=null&&!tmp.equalsIgnoreCase("false")) {
-					ArrayList<RendererConfiguration> renders=PMS.get().getRenders();
+					List<RendererConfiguration> renders=PMS.get().getRenders();
 					for(int i=0;i<renders.size();i++) {
 						RendererConfiguration r=renders.get(i);
 						if(r.equals(mediaRenderer))
@@ -299,7 +308,7 @@ public class RequestV2 extends HTTPResource {
 					if(owner!=null) 
 						dlna.updateRender(mediaRenderer);
 					// This is a request for a regular file.
-					inputStream = dlna.getInputStream(lowRange, highRange, timeseek, mediaRenderer);
+					inputStream = dlna.getInputStream(Range.create(lowRange, highRange, range.getStart(), range.getEnd()), mediaRenderer);
 					String name = dlna.getDisplayName(mediaRenderer);
 
 					if (inputStream == null) {
@@ -315,14 +324,15 @@ public class RequestV2 extends HTTPResource {
 						if (rendererMimeType != null && !"".equals(rendererMimeType)) {
 							output.setHeader(HttpHeaders.Names.CONTENT_TYPE, rendererMimeType);
 						}
-						
-						if (dlna.media != null) {
-							if (StringUtils.isNotBlank(dlna.media.container)) {
-								name += " [container: " + dlna.media.container + "]";
+
+						final DLNAMediaInfo media = dlna.getMedia();
+						if (media != null) {
+							if (StringUtils.isNotBlank(media.container)) {
+								name += " [container: " + media.container + "]";
 							}
 	
-							if (StringUtils.isNotBlank(dlna.media.codecV)) {
-								name += " [video: " + dlna.media.codecV + "]";
+							if (StringUtils.isNotBlank(media.codecV)) {
+								name += " [video: " + media.codecV + "]";
 							}
 						}
 	
@@ -565,7 +575,8 @@ public class RequestV2 extends HTTPResource {
 				else if (soapaction.contains("ContentDirectory:1#Search")) 
 					searchCriteria=getEnclosingValue(content,"<SearchCriteria>","</SearchCriteria>");
 
-				ArrayList<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
+
+				List<DLNAResource> files = PMS.get().getRootFolder(mediaRenderer).getDLNAResources(objectID, browseFlag!=null&&browseFlag.equals("BrowseDirectChildren"), startingIndex, requestCount, mediaRenderer,
 						searchCriteria);
 				if (searchCriteria != null && files != null) {
 					searchCriteria=searchCriteria.toLowerCase();
@@ -574,9 +585,10 @@ public class RequestV2 extends HTTPResource {
 						if(res.isSearched())
 							continue;
 						boolean keep=res.getName().toLowerCase().indexOf(searchCriteria)!=-1;
-						if(res.media!=null) {
-							for(int j=0;j<res.media.audioCodes.size();j++) {
-								DLNAMediaAudio audio=res.media.audioCodes.get(j);
+						final DLNAMediaInfo media = res.getMedia();
+						if(media!=null) {
+							for(int j=0;j<media.audioCodes.size();j++) {
+								DLNAMediaAudio audio=media.audioCodes.get(j);
 								keep|=audio.album.toLowerCase().indexOf(searchCriteria)!=-1;
 								keep|=audio.artist.toLowerCase().indexOf(searchCriteria)!=-1;
 								keep|=audio.songname.toLowerCase().indexOf(searchCriteria)!=-1;
@@ -715,12 +727,13 @@ public class RequestV2 extends HTTPResource {
 				output.setHeader(HttpHeaders.Names.CONTENT_LENGTH, "" + cl);
 			}
 
-			if (timeseek > 0 && dlna != null) {
+			if (range.isStartOffsetExists() && dlna != null) {
 				// Add timeseek information headers.
-				String timeseekValue = DLNAMediaInfo.getDurationString(timeseek);
-				String timetotalValue = dlna.media.duration;
-				output.setHeader("TimeSeekRange.dlna.org", "npt=" + timeseekValue + "-" + timetotalValue + "/" + timetotalValue);
-				output.setHeader("X-Seek-Range", "npt=" + timeseekValue + "-" + timetotalValue + "/" + timetotalValue);
+				String timeseekValue = DLNAMediaInfo.getDurationString(range.getStartOrZero());
+				String timetotalValue = dlna.getMedia().getDurationString();
+				String timeEndValue = range.isEndLimitExists() ? DLNAMediaInfo.getDurationString(range.getEnd()) : timetotalValue;
+				output.setHeader("TimeSeekRange.dlna.org", "npt=" + timeseekValue + "-" + timeEndValue + "/" + timetotalValue);
+				output.setHeader("X-Seek-Range", "npt=" + timeseekValue + "-" + timeEndValue + "/" + timetotalValue);
 			}
 
 			// Send the response headers to the client.
@@ -732,6 +745,7 @@ public class RequestV2 extends HTTPResource {
 
 				// Add a listener to clean up after sending the entire response body.
 				chunkWriteFuture.addListener(new ChannelFutureListener() {
+					@Override
 					public void operationComplete(ChannelFuture future) {
 						try {
 							PMS.get().getRegistry().reenableGoToSleep();
@@ -789,7 +803,7 @@ public class RequestV2 extends HTTPResource {
 		return future;
 	}
 
-	/**
+    /**
 	 * Returns a date somewhere in the far future.
 	 * @return The {@link String} containing the date
 	 */
@@ -816,5 +830,25 @@ public class RequestV2 extends HTTPResource {
 			result = content.substring(leftTagPos + leftTag.length(), rightTagPos);
 		}
 		return result;
+	}
+	
+	/**
+	 * Parse as double, or if it's not just one number, handles {hour}:{minute}:{seconds}
+	 * @param time
+	 * @return
+	 */
+	private double convertTime(String time) {
+		try {
+			return Double.parseDouble(time);
+		} catch (NumberFormatException e) {
+			String[] arrs = time.split(":");
+			double value, sum = 0;
+			for (int i = 0; i < arrs.length; i++) {
+				value = Double.parseDouble(arrs[arrs.length - i - 1]);
+				sum += value * MULTIPLIER[i];
+			}
+			return sum;
+		}
+
 	}
 }

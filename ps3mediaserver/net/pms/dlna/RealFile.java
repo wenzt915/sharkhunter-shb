@@ -52,6 +52,7 @@ public class RealFile extends MapFile {
 	}
 
 	@Override
+	// FIXME: this is called repeatedly for invalid files e.g. files MediaInfo can't parse
 	public boolean isValid() {
 		File file = this.getFile();
 		checktype();
