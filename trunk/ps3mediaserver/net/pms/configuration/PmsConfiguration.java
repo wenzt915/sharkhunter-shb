@@ -26,13 +26,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 import net.pms.PMS;
 import net.pms.io.SystemUtils;
@@ -175,7 +173,6 @@ public class PmsConfiguration {
 	private static final String KEY_USE_SUBTITLES = "autoloadsrt";
 	private static final String KEY_VIDEOTRANSCODE_START_DELAY = "key_videotranscode_start_delay";
 	private static final String KEY_VIRTUAL_FOLDERS = "vfolders";
-	private static final String KEY_HDAUDIO_PASSTHROUGH = "hdaudio_passthrough";
 	private static final String KEY_UPNP_PORT = "upnp_port";
 	private static final String UNLIMITED_BITRATE = "0";
 	private static final String KEY_UUID = "uuid";
@@ -206,18 +203,8 @@ public class PmsConfiguration {
 	private final PropertiesConfiguration configuration;
 	private final TempFolder tempFolder;
 	private final ProgramPathDisabler programPaths;
-	
+
 	private final IpFilter filter = new IpFilter();
-	
-	/**
-	 * The set of the keys, which change needs reload.
-	 */
-	public static final Set<String> NEED_RELOAD_FLAGS = new HashSet<String>(Arrays.asList(
-			KEY_ALTERNATE_THUMB_FOLDER, KEY_NETWORK_INTERFACE, KEY_IP_FILTER,
-			KEY_SORT_METHOD, KEY_HIDE_EMPTY_FOLDERS, KEY_HIDE_TRANSCODE_FOLDER, KEY_HIDE_MEDIA_LIBRARY_FOLDER, KEY_OPEN_ARCHIVES, KEY_USE_CACHE,
-			KEY_HIDE_ENGINENAMES, KEY_ITUNES_ENABLED, KEY_IPHOTO_ENABLED, KEY_APERTURE_ENABLED, KEY_ENGINES, KEY_FOLDERS, KEY_HIDE_VIDEO_SETTINGS,
-			KEY_AUDIO_THUMBNAILS_METHOD, KEY_NOTRANSCODE, KEY_FORCETRANSCODE, KEY_SERVER_PORT, KEY_SERVER_HOSTNAME, KEY_CHAPTER_SUPPORT,
-			KEY_HIDE_EXTENSIONS));
 
 	/*
 		The following code enables a single setting - PMS_PROFILE - to be used to
@@ -1556,10 +1543,35 @@ public class PmsConfiguration {
 		configuration.setProperty(KEY_OVERSCAN, value);
 	}
 
+	/**
+	 * Returns sort method to use for ordering lists of files. One of the
+	 * following values is returned:
+	 * <ul>
+	 * <li>0: Locale-sensitive A-Z</li>
+	 * <li>1: Sort by modified date, newest first</li>
+	 * <li>2: Sort by modified date, oldest first</li>
+	 * <li>3: Case-insensitive ASCIIbetical sort</li>
+	 * <li>4: Locale-sensitive natural sort</li>
+	 * </ul>
+	 * Default value is 0.
+	 * @return The sort method
+	 */
 	public int getSortMethod() {
 		return getInt(KEY_SORT_METHOD, 0);
 	}
 
+	/**
+	 * Set the sort method to use for ordering lists of files. The following
+	 * values are recognized:
+	 * <ul>
+	 * <li>0: Locale-sensitive A-Z</li>
+	 * <li>1: Sort by modified date, newest first</li>
+	 * <li>2: Sort by modified date, oldest first</li>
+	 * <li>3: Case-insensitive ASCIIbetical sort</li>
+	 * <li>4: Locale-sensitive natural sort</li>
+	 * </ul>
+	 * @param value The sort method to use
+	 */
 	public void setSortMethod(int value) {
 		configuration.setProperty(KEY_SORT_METHOD, value);
 	}
@@ -1594,14 +1606,6 @@ public class PmsConfiguration {
 
 	public boolean isDTSEmbedInPCM() {
 		return getBoolean(KEY_EMBED_DTS_IN_PCM, false);
-	}
-	
-	public void setHDAudioPassthrough(boolean value) {
-		configuration.setProperty(KEY_HDAUDIO_PASSTHROUGH, value);
-	}
-
-	public boolean isHDAudioPassthrough() {
-		return getBoolean(KEY_HDAUDIO_PASSTHROUGH, false);
 	}
 
 	public void setMencoderMuxWhenCompatible(boolean value) {
@@ -1830,6 +1834,7 @@ public class PmsConfiguration {
 	public void setUuid(String value){
 		configuration.setProperty(KEY_UUID, value);
 	}
+
 	
 	public void addConfigurationListener(ConfigurationListener l) {
 		configuration.addConfigurationListener(l);

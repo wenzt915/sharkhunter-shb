@@ -66,8 +66,8 @@ public class Request extends HTTPResource {
 	private RendererConfiguration mediaRenderer;
 	private String transferMode;
 	private String contentFeatures;
-	private Double timeseek;
-	private Double timeRangeEnd;
+	private double timeseek;
+	private double timeRangeEnd;
 	private long highRange;
 	private boolean http10;
 
@@ -234,65 +234,68 @@ public class Request extends HTTPResource {
 						output(output, "Content-Type: " + getRendererMimeType(dlna.mimeType(), mediaRenderer));
 					    final DLNAMediaInfo media = dlna.getMedia();
 						if (media != null) {
-							if (StringUtils.isNotBlank(media.container)) {
-								name += " [container: " + media.container + "]";
+							if (StringUtils.isNotBlank(media.getContainer())) {
+								name += " [container: " + media.getContainer() + "]";
 							}
-							if (StringUtils.isNotBlank(media.codecV)) {
-								name += " [video: " + media.codecV + "]";
+							if (StringUtils.isNotBlank(media.getCodecV())) {
+								name += " [video: " + media.getCodecV() + "]";
 							}
 						}
 						PMS.get().getFrame().setStatusLine("Serving " + name);
 
-						// Response modes:
-						//   Default          - Content-Length refers to total media size.
-						//   Chunked          - Content-Length refers to chunk size.
-						// We use -1 for arithmetic convenience but don't send it as a value. 
+						// Response generation:
+						// We use -1 for arithmetic convenience but don't send it as a value.
 						// If Content-Length < 0 we omit it, for Content-Range we use '*' to signify unspecified.
-						
+
 						boolean chunked = mediaRenderer.isChunkedTransfer();
-						
+
 						// Determine the total size. Note: when transcoding the length is
 						// not known in advance, so DLNAMediaInfo.TRANS_SIZE will be returned instead.
-						
-						long totalsize = dlna.length();
-						
+
+						long totalsize = dlna.length(mediaRenderer);
+
 						if (chunked && totalsize == DLNAMediaInfo.TRANS_SIZE) {
 							// In chunked mode we try to avoid arbitrary values.
 							totalsize = -1;
 						}
-						
-						long available = inputStream.available();
 
-						if (chunked) {
-							long requested = highRange - lowRange;
+						long remaining = totalsize - lowRange;
+						long requested = highRange - lowRange;
+
+						if (requested != 0) {
+							// Determine the range (i.e. smaller of known or requested bytes)
+							long bytes = remaining > -1 ? remaining : inputStream.available();
 							
-							if (requested < 0) {
-								CLoverride = (totalsize > 0 ? available : -1);
+							if (requested > 0 && bytes > requested) {
+								bytes = requested + 1;
+							}
+
+							// Calculate the corresponding highRange (this is usually redundant).
+							highRange = lowRange + bytes - (bytes > 0 ? 1 : 0);
+
+							logger.trace((chunked ? "Using chunked response. " : "") + "Sending " + bytes + " bytes.");
+
+							output(output, "Content-Range: bytes " + lowRange
+									+ "-" + (highRange > -1 ? highRange : "*")
+									+ "/" + (totalsize > -1 ? totalsize : "*"));
+
+							// Content-Length refers to the current chunk size here, though in chunked
+							// mode if the request is open-ended and totalsize is unknown we omit it.
+							if (chunked && requested < 0 && totalsize < 0) {
+								CLoverride = -1;
 							} else {
-								requested += (requested > 0 ? 1 : 0);
-								CLoverride = (available < requested ? available : requested);
+								CLoverride = bytes;
 							}
 						} else {
-							CLoverride = available;
+							// Content-Length refers to the total remaining size of the stream here.
+							CLoverride = remaining;
 						}
-						
-						// Calculate the corresponding highRange (this is usually redundant).
-						highRange = lowRange + CLoverride - (CLoverride > 0 ? 1 : 0);
-						
-						if (!chunked) {
-							CLoverride = totalsize;
-						}
-					
-						logger.trace((chunked ? "Using chunked response. " : "")  + "Available Content-Length: " + available);
-
-						output(output, "Content-Range: bytes " + lowRange + "-" 
-							+ (highRange > -1 ? highRange : "*") + "/" + (totalsize > -1 ? totalsize : "*"));
 
 						if (contentFeatures != null) {
 							output(output, "ContentFeatures.DLNA.ORG: " + dlna.getDlnaContentFeatures());
 						}
-						if (dlna.getPlayer() == null || xbox) {
 
+						if (dlna.getPlayer() == null || xbox) {
 							output(output, "Accept-Ranges: bytes");
 						}
 						if(owner!=null)
@@ -382,7 +385,7 @@ public class Request extends HTTPResource {
 				response.append(CRLF);
 				response.append(HTTPXMLHelper.GETSYSTEMUPDATEID_HEADER);
 				response.append(CRLF);
-				response.append("<Id>").append(DLNAResource.systemUpdateId).append("</Id>");
+				response.append("<Id>").append(DLNAResource.getSystemUpdateId()).append("</Id>");
 				response.append(CRLF);
 				response.append(HTTPXMLHelper.GETSYSTEMUPDATEID_FOOTER);
 				response.append(CRLF);
@@ -451,19 +454,19 @@ public class Request extends HTTPResource {
 				String searchCriteria = null;
 				if (xbox && PMS.getConfiguration().getUseCache() && PMS.get().getLibrary() != null && containerID != null) {
 					if (containerID.equals("7") && PMS.get().getLibrary().getAlbumFolder() != null) {
-						objectID = PMS.get().getLibrary().getAlbumFolder().getId();
+						objectID = PMS.get().getLibrary().getAlbumFolder().getResourceId();
 					} else if (containerID.equals("6") && PMS.get().getLibrary().getArtistFolder() != null) {
-						objectID = PMS.get().getLibrary().getArtistFolder().getId();
+						objectID = PMS.get().getLibrary().getArtistFolder().getResourceId();
 					} else if (containerID.equals("5") && PMS.get().getLibrary().getGenreFolder() != null) {
-						objectID = PMS.get().getLibrary().getGenreFolder().getId();
+						objectID = PMS.get().getLibrary().getGenreFolder().getResourceId();
 					} else if (containerID.equals("F") && PMS.get().getLibrary().getPlaylistFolder() != null) {
-						objectID = PMS.get().getLibrary().getPlaylistFolder().getId();
+						objectID = PMS.get().getLibrary().getPlaylistFolder().getResourceId();
 					} else if (containerID.equals("4") && PMS.get().getLibrary().getAllFolder() != null) {
-						objectID = PMS.get().getLibrary().getAllFolder().getId();
+						objectID = PMS.get().getLibrary().getAllFolder().getResourceId();
 					} else if (containerID.equals("1")) {
 						String artist = getEnclosingValue(content, "upnp:artist = &quot;", "&quot;)");
 						if (artist != null) {
-							objectID = PMS.get().getLibrary().getArtistFolder().getId();
+							objectID = PMS.get().getLibrary().getArtistFolder().getResourceId();
 							searchCriteria = artist;
 						}
 					}
@@ -592,8 +595,7 @@ public class Request extends HTTPResource {
 				output(output, "Content-Length: " + cl);
 			}
 
-		//	if (timeseek > 0 && dlna != null) {
-			if (timeseek !=null && dlna != null) {
+			if (timeseek > 0 && dlna != null) {
 				String timeseekValue = DLNAMediaInfo.getDurationString(timeseek);
 				String timetotalValue = dlna.getMedia().getDurationString();
 				output(output, "TimeSeekRange.dlna.org: npt=" + timeseekValue + "-" + timetotalValue + "/" + timetotalValue);

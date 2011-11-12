@@ -124,6 +124,7 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 					renderer.associateIP(ia);
 					PMS.get().setRendererfound(renderer);
 					useragentfound = true;
+					logger.trace("Matched media renderer \"" + renderer.getRendererName() + "\" based on header \"" + headerLine + "\"");
 				}
 			}
 			if (!useragentfound && headerLine != null && request != null) {
@@ -133,6 +134,7 @@ public class RequestHandlerV2 extends SimpleChannelUpstreamHandler {
 					alternateRenderer.associateIP(ia);
 					PMS.get().setRendererfound(alternateRenderer);
 					useragentfound = true;
+					logger.trace("Matched media renderer \"" + renderer.getRendererName() + "\" based on header \"" + headerLine + "\"");
 				}
 			}
 

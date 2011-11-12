@@ -76,6 +76,7 @@ import net.pms.formats.JPG;
 import net.pms.formats.M4A;
 import net.pms.formats.MKV;
 import net.pms.formats.MP3;
+import net.pms.formats.WAV;
 import net.pms.formats.MPG;
 import net.pms.formats.OGG;
 import net.pms.formats.PNG;
@@ -286,15 +287,15 @@ public class PMS {
 			checkThread = null;
 
 			// XXX no longer used
-			if (params[0].equals("vlc") && stderrConsumer.getResults().get(0).startsWith("VLC"))
-			{
+			if (params[0].equals("vlc") && stderrConsumer.getResults().get(0).startsWith("VLC")) {
 				return true;
 			}
+
 			// XXX no longer used
-			if (params[0].equals("ffmpeg") && stderrConsumer.getResults().get(0).startsWith("FF"))
-			{
+			if (params[0].equals("ffmpeg") && stderrConsumer.getResults().get(0).startsWith("FF")) {
 				return true;
 			}
+
 			int exit = process.exitValue();
 			if (exit != 0) {
 				if (error) {
@@ -362,18 +363,8 @@ public class PMS {
 			System.out.println("Switching to console mode");
 			frame = new DummyFrame();
 		}
-		configuration.addConfigurationListener(new ConfigurationListener() {
-                    
-                    @Override
-                    public void configurationChanged(ConfigurationEvent event) {
-                        if (!event.isBeforeUpdate()) {
-                            if (PmsConfiguration.NEED_RELOAD_FLAGS.contains(event.getPropertyName())) {
-                                frame.setReloadable(true);
-                            }
-                        }
-                    }
-                    
-		});
+
+		frame.setReloadable(true);
 
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png");
 		proxy = -1;
@@ -404,7 +395,7 @@ public class PMS {
 				logger.info("Logging to multiple files:");
 				Iterator<Entry<String, String>> logsIterator = lfps.entrySet().iterator();
 				Entry<String, String> entry;
-				while(logsIterator.hasNext()) {
+				while (logsIterator.hasNext()) {
 					entry = logsIterator.next();
 					logger.info(String.format("%s: %s", entry.getKey(), entry.getValue()));
 				}
@@ -419,12 +410,12 @@ public class PMS {
 		
 		logger.info("Memory: "+Runtime.getRuntime().maxMemory());
 
-		File profileFile =  new File(profilePath);
+		File profileFile = new File(profilePath);
 
 		if (profileFile.exists()) {
 			String status = String.format("%s%s",
-				profileFile.canRead()    ? "r" : "-",
-				profileFile.canWrite()   ? "w" : "-"
+				profileFile.canRead()  ? "r" : "-",
+				profileFile.canWrite() ? "w" : "-"
 			);
 			logger.info("Profile status: " + status);
 		} else {
@@ -596,13 +587,13 @@ public class PMS {
 	public MediaLibrary getLibrary() {
 		return mediaLibrary;
 	}
-	
+
 	private SystemUtils createSystemUtils() {
-	    if (Platform.isWindows()) {
-	        return new WinUtils();
-	    } else {
-	        return new BasicSystemUtils();
-	    }
+		if (Platform.isWindows()) {
+			return new WinUtils();
+		} else {
+			return new BasicSystemUtils();
+		}
 	}
 
 	/**Executes the needed commands in order to make PMS a Windows service that starts whenever the machine is started.
@@ -633,6 +624,7 @@ public class PMS {
 		extensions.add(new MP3());
 		extensions.add(new ISO());
 		extensions.add(new MPG());
+		extensions.add(new WAV());
 		extensions.add(new JPG());
 		extensions.add(new OGG());
 		extensions.add(new PNG());
@@ -725,6 +717,7 @@ public class PMS {
 	// so log it by default so we can fix it.
 	// BUT it's also called when the GUI is initialized (to populate the list of shared folders),
 	// and we don't want this message to appear *before* the PMS banner, so allow that call to suppress logging	
+
 	public File[] getFoldersConf(String tag,boolean log) {
 	        String folders = getConfiguration().getFolders(tag);
 		if (folders == null || folders.length() == 0) {
@@ -780,7 +773,6 @@ public class PMS {
 		}
 		server = new HTTPServer(configuration.getServerPort());
 		server.start();
-		frame.setReloadable(false);
 		UPNPHelper.sendAlive();
 	}
 
@@ -826,7 +818,7 @@ public class PMS {
 	public static void error(String msg, Throwable t) {
 		logger.error(msg, t);
 	}
-	
+
 	/**Universally Unique Identifier used in the UPnP server.
 	 * 
 	 */
@@ -850,7 +842,7 @@ public class PMS {
 					} else if (get().getServer().getNi() != null) {
 						ni = get().getServer().getNi();
 					}
-					
+
 					if (ni != null) {
 						byte[] addr = PMSUtil.getHardwareAddress(ni); // return null when java.net.preferIPv4Stack=true
 						if (addr != null) {
@@ -1004,9 +996,9 @@ public class PMS {
 		}
 
 		try {
-            configuration = new PmsConfiguration();
 
-            assert configuration != null;
+			configuration = new PmsConfiguration();
+			assert configuration != null;
 
             // Load the (optional) logback config file. This has to be called after 'new PmsConfiguration'
             // as the logging starts immediately and some filters need the PmsConfiguration.
@@ -1019,7 +1011,6 @@ public class PMS {
             System.err.println("Configuration error: " + t.getMessage());
             JOptionPane.showMessageDialog(null, "Configuration error:"+t.getMessage(), "Error initalizing PMS!", JOptionPane.ERROR_MESSAGE);
         }
-
 	}
 
 	public HTTPServer getServer() {
@@ -1042,14 +1033,14 @@ public class PMS {
 		}
 	}
 
-        public void storeFileInCache(File file, int formatType) {
-            if (getConfiguration().getUseCache()) {
-                if (!getDatabase().isDataExists(file.getAbsolutePath(), file.lastModified())) {
-                    getDatabase().insertData(file.getAbsolutePath(), file.lastModified(), formatType, null);
-                }
-            }
-        }
-    
+	public void storeFileInCache(File file, int formatType) {
+		if (getConfiguration().getUseCache()) {
+			if (!getDatabase().isDataExists(file.getAbsolutePath(), file.lastModified())) {
+				getDatabase().insertData(file.getAbsolutePath(), file.lastModified(), formatType, null);
+			}
+		}
+	}
+
 	/**
 	 * Retrieves the {@link net.pms.configuration.PmsConfiguration PmsConfiguration} object
 	 * that contains all configured settings for PMS. The object provides getters for all
