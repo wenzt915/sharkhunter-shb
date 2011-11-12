@@ -14,6 +14,7 @@ import net.pms.dlna.MediaInfoParser;
 import net.pms.dlna.RootFolder;
 import net.pms.formats.Format;
 import net.pms.network.HTTPResource;
+import net.pms.network.SpeedStats;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
@@ -89,16 +90,8 @@ public class RendererConfiguration {
 
 
 	public void associateIP(InetAddress sa) {
-		String ip = sa.getHostAddress();
-		String hostname = sa.getCanonicalHostName();
-
-		if (!ip.equals(hostname)) {
-			logger.info("Renderer " + this + " found on this address: " + hostname + " (" + ip + ")");
-		} else {
-			logger.info("Renderer " + this + " found on this address: " + ip);
-		}
 		addressAssociation.put(sa, this);
-		SpeedStats.getInstance().getSpeedInMBits(sa);
+		SpeedStats.getInstance().getSpeedInMBits(sa, getRendererName());
 	}
 
 	public static RendererConfiguration getRendererConfigurationBySocketAddress(InetAddress sa) {
@@ -116,7 +109,7 @@ public class RendererConfiguration {
 
 	private static RendererConfiguration manageRendererMatch(RendererConfiguration r) {
 		if (addressAssociation.values().contains(r)) {
-			logger.info("Another renderer like " + r.getRendererName() + " was found!");
+			//logger.info("Another renderer like " + r.getRendererName() + " was found!");
 		}
 		return r;
 	}

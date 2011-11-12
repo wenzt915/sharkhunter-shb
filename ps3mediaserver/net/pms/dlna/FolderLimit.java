@@ -58,8 +58,7 @@ public class FolderLimit extends VirtualFolder {
 	}
 	
 	public void resolve() {
-		this.discovered=false;
-		this.children.clear();
-		this.childrenNumber=0;
+		this.setDiscovered(false);
+		this.getChildren().clear();
 	}
 }

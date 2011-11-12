@@ -110,10 +110,10 @@ public class RootFolder extends DLNAResource {
 
 	@Override
 	public void discoverChildren() {
-		if(discovered) {
+		if(isDiscovered()) {
 			return;
 		}
-		
+
 		if(!configuration.getNoFolders(tag)) {
 			for (DLNAResource r : getConfiguredFolders()) {
 				addChild(r);
@@ -159,6 +159,7 @@ public class RootFolder extends DLNAResource {
 				addChild(videoSettingsRes);
 			}
 		}
+
 		
 		if(configuration.getFolderLimit()) {
 			lim=new FolderLimit();
@@ -175,8 +176,7 @@ public class RootFolder extends DLNAResource {
 		} catch (Exception e) {
 		}
 		
-		
-		discovered = true;
+		setDiscovered(true);
 	}
 	
 	public void setFolderLim(DLNAResource r) {
@@ -186,10 +186,10 @@ public class RootFolder extends DLNAResource {
 
 	public void scan() {
 		running = true;
-		if(!discovered) {
+		if(!isDiscovered()) {
 			discoverChildren();
 		}
-		defaultRenderer = RendererConfiguration.getDefaultConf();
+		setDefaultRenderer(RendererConfiguration.getDefaultConf());
 		scan(this);
 		IFrame frame = PMS.get().getFrame();
 		frame.setScanLibraryEnabled(true);
@@ -203,9 +203,9 @@ public class RootFolder extends DLNAResource {
 
 	private synchronized void scan(DLNAResource resource) {
 		if (running) {
-			for (DLNAResource child : resource.children) {
+			for (DLNAResource child : resource.getChildren()) {
 				if (running && child.allowScan()) {
-					child.defaultRenderer = resource.defaultRenderer;
+					child.setDefaultRenderer(resource.getDefaultRenderer());
 					String trace = null;
 					if (child instanceof RealFile) {
 						trace = "Scanning Folder: " + child.getName();
@@ -214,7 +214,7 @@ public class RootFolder extends DLNAResource {
 						logger.debug(trace);
 						PMS.get().getFrame().setStatusLine(trace);
 					}
-					if (child.discovered) {
+					if (child.isDiscovered()) {
 						child.refreshChildren();
 					} else {
 						if (child instanceof DVDISOFile || child instanceof DVDISOTitle) // ugly hack
@@ -223,14 +223,14 @@ public class RootFolder extends DLNAResource {
 						}
 						child.discoverChildren();
 						child.analyzeChildren(-1);
-						child.discovered = true;
+						child.setDiscovered(true);
 					}
-					int count = child.children.size();
+					int count = child.getChildren().size();
 					if (count == 0) {
 						continue;
 					}
 					scan(child);
-					child.children.clear();
+					child.getChildren().clear();
 				}
 			}
 		}
@@ -482,26 +482,26 @@ public class RootFolder extends DLNAResource {
 		}
 		return res;
 	}
-	
+
 	private VirtualFolder createApertureDlnaLibrary(String url) throws UnsupportedEncodingException, MalformedURLException, XmlParseException, IOException, URISyntaxException {
 		VirtualFolder res = null;
-		
+
 		if (url != null) {
 			Map<String, Object> iPhotoLib;
 			// every project is a album, too
 			ArrayList<?> listOfAlbums;
 			HashMap<?, ?> album;
 			HashMap<?, ?> photoList;
-			
+
 			URI tURI = new URI(url);
 			iPhotoLib = Plist.load(URLDecoder.decode(tURI.toURL().getFile(), System.getProperty("file.encoding"))); // loads the (nested) properties.
 			photoList = (HashMap<?, ?>) iPhotoLib.get("Master Image List"); // the list of photos
 			final Object mediaPath = iPhotoLib.get("Archive Path");
 			String mediaName;
-			
+
 			if (mediaPath != null) {
 				mediaName = mediaPath.toString();
-				
+
 				if (mediaName != null && mediaName.lastIndexOf("/") != -1 && mediaName.lastIndexOf(".aplibrary") != -1) {
 					mediaName = mediaName.substring(mediaName.lastIndexOf("/"), mediaName.lastIndexOf(".aplibrary"));
 				} else {
@@ -510,19 +510,19 @@ public class RootFolder extends DLNAResource {
 			} else {
 				mediaName = "unknown library";
 			}
-			
+
 			logger.info("Going to parse aperture library: " + mediaName);
 			res  = new VirtualFolder(mediaName, null);
 			listOfAlbums = (ArrayList<?>) iPhotoLib.get("List of Albums"); // the list of events (rolls)
-			
+
 			for (Object item : listOfAlbums) {
 				album = (HashMap<?, ?>) item;
-				
+
 				if (album.get("Parent") == null) {
 					VirtualFolder vAlbum = createApertureAlbum(photoList, album, listOfAlbums);
 					res.addChild(vAlbum);
 				}
-			}			
+			}
 		} else {
 			logger.info("No Aperture library found.");
 		}
@@ -532,45 +532,45 @@ public class RootFolder extends DLNAResource {
 
 	private VirtualFolder createApertureAlbum(HashMap<?, ?> photoList,
 							HashMap<?, ?> album, ArrayList<?> listOfAlbums) {
-		
-		ArrayList<?> albumPhotos;		
+
+		ArrayList<?> albumPhotos;
 		int albumId = (Integer)album.get("AlbumId");
 		VirtualFolder vAlbum = new VirtualFolder(album.get("AlbumName").toString(), null);
-		
+
 		for (Object item : listOfAlbums) {
 			HashMap<?, ?> sub = (HashMap<?, ?>) item;
-			
+
 			if (sub.get("Parent") != null) {
 				// recursive album creation
 				int parent = (Integer)sub.get("Parent");
-				
+
 				if (parent == albumId) {
 					VirtualFolder subAlbum = createApertureAlbum(photoList, sub, listOfAlbums);
 					vAlbum.addChild(subAlbum);
 				}
 			}
 		}
-				
+
 		albumPhotos = (ArrayList<?>) album.get("KeyList");
-		
+
 		if (albumPhotos == null) {
 			return vAlbum;
 		}
-		
+
 		boolean firstPhoto = true;
-		
+
 		for (Object photoKey : albumPhotos) {
 			HashMap<?, ? > photo = (HashMap<?, ?>) photoList.get(photoKey);
-			
+
 			if (firstPhoto) {
 				Object x = photoList.get("ThumbPath");
-				
+
 				if (x!=null) {
 					vAlbum.setThumbnail(x.toString());
 				}
 				firstPhoto = false;
 			}
-			
+
 			RealFile file = new RealFile(new File(photo.get("ImagePath").toString()));
 			vAlbum.addChild(file);
 		}
@@ -647,26 +647,30 @@ public class RootFolder extends DLNAResource {
 			ArrayList<?> Playlists;
 			HashMap<?, ?> Playlist;
 			HashMap<?, ?> Tracks;
-			HashMap<?, ?> Track;
+			HashMap<?, ?> track;
 			ArrayList<?> PlaylistTracks;
 
 			try {
 				String iTunesFile = getiTunesFile();
+
 				if (iTunesFile != null && (new File(iTunesFile)).exists()) {
 					iTunesLib = Plist.load(URLDecoder.decode(iTunesFile, System.getProperty("file.encoding"))); // loads the (nested) properties.
 					Tracks = (HashMap<?, ?>) iTunesLib.get("Tracks"); // the list of tracks
 					Playlists = (ArrayList<?>) iTunesLib.get("Playlists"); // the list of Playlists
 					res = new VirtualFolder("iTunes Library", null);
+
 					for (Object item : Playlists) {
 						Playlist = (HashMap<?, ?>) item;
 						VirtualFolder pf = new VirtualFolder(Playlist.get("Name").toString(), null);
 						PlaylistTracks = (ArrayList<?>) Playlist.get("Playlist Items"); // list of tracks in a playlist
+
 						if (PlaylistTracks != null) {
 							for (Object t : PlaylistTracks) {
 								HashMap<?, ?> td = (HashMap<?, ?>) t;
-								Track = (HashMap<?, ?>) Tracks.get(td.get("Track ID").toString());
-								if (Track.get("Location").toString().startsWith("file://")) {
-									URI tURI2 = new URI(Track.get("Location").toString());
+								track = (HashMap<?, ?>) Tracks.get(td.get("Track ID").toString());
+								
+								if (track != null && track.get("Location").toString().startsWith("file://")) {
+									URI tURI2 = new URI(track.get("Location").toString());
 									RealFile file = new RealFile(new File(URLDecoder.decode(tURI2.toURL().getFile(), "UTF-8")));
 									pf.addChild(file);
 								}
@@ -807,11 +811,21 @@ public class RootFolder extends DLNAResource {
 				if(Arrays.binarySearch(validPlugins, listener.name())<0)
 					continue;
 			if (listener instanceof AdditionalFolderAtRoot) {
-				res.add(((AdditionalFolderAtRoot) listener).getChild());
+				AdditionalFolderAtRoot afar = (AdditionalFolderAtRoot) listener;
+				try {
+					res.add(afar.getChild());
+				} catch (Throwable t) {
+					logger.error(String.format("Failed to append AdditionalFolderAtRoot with name=%s, class=%s", afar.name(), afar.getClass()), t);
+				}
 			} else if (listener instanceof AdditionalFoldersAtRoot) {
 				java.util.Iterator<DLNAResource> folders = ((AdditionalFoldersAtRoot) listener).getChildren();
 				while (folders.hasNext()) {
-					res.add(folders.next());
+					DLNAResource resource = folders.next();
+					try {
+						res.add(resource);
+					} catch (Throwable t) {
+						logger.error(String.format("Failed to append AdditionalFolderAtRoots with class=%s for DLNAResource=%s", listener.getClass(), resource.getClass()), t);
+					}
 				}
 			}
 		}
@@ -820,7 +834,6 @@ public class RootFolder extends DLNAResource {
 
 	@Override
 	public String toString() {
-		return "RootFolder["+children+"]";
+		return "RootFolder[" + getChildren() + "]";
 	}
-}
- 
+} 

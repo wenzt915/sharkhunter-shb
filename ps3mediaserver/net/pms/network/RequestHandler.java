@@ -87,7 +87,9 @@ public class RequestHandler implements Runnable {
 					if (renderer != null) {
 						PMS.get().setRendererfound(renderer);
 						request.setMediaRenderer(renderer);
+						renderer.associateIP(socket.getInetAddress());
 						useragentfound = true;
+						logger.trace("Matched media renderer \"" + renderer.getRendererName() + "\" based on header \"" + headerLine + "\"");
 					}
 				}
 				if (!useragentfound && headerLine != null && request != null) {
@@ -95,7 +97,9 @@ public class RequestHandler implements Runnable {
 					if (renderer != null) {
 						PMS.get().setRendererfound(renderer);
 						request.setMediaRenderer(renderer);
+						renderer.associateIP(socket.getInetAddress());
 						useragentfound = true;
+						logger.trace("Matched media renderer \"" + renderer.getRendererName() + "\" based on header \"" + headerLine + "\"");
 					}
 				}
 				try {
@@ -166,7 +170,15 @@ public class RequestHandler implements Runnable {
 				}
 				headerLine = br.readLine();
 			}
+			
 
+			if(request!=null&&request.getMediaRenderer() == null) {
+				// No luck with the hdrs. Maybe the address might do
+				RendererConfiguration renderer = RendererConfiguration.getRendererConfigurationBySocketAddress(socket.getInetAddress());
+				if(renderer!=null)
+					request.setMediaRenderer(renderer);
+			}
+				
 			// if client not recognized, take a default renderer config
 			if (request != null) {
 				if (request.getMediaRenderer() == null) {

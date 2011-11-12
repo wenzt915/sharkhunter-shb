@@ -308,6 +308,20 @@ public class RequestV2 extends HTTPResource {
 					if(owner!=null) 
 						dlna.updateRender(mediaRenderer);
 					// This is a request for a regular file.
+
+					// If range has not been initialized yet and the DLNAResource has its
+					// own start and end defined, initialize range with those values before
+					// requesting the input stream.
+					Range.Time splitRange = dlna.getSplitRange();
+
+					if (range.getStart() == null && splitRange.getStart() != null) {
+						range.setStart(splitRange.getStart());
+					}
+
+					if (range.getEnd() == null && splitRange.getEnd() != null) {
+						range.setEnd(splitRange.getEnd());
+					}
+
 					inputStream = dlna.getInputStream(Range.create(lowRange, highRange, range.getStart(), range.getEnd()), mediaRenderer);
 					String name = dlna.getDisplayName(mediaRenderer);
 
@@ -320,76 +334,78 @@ public class RequestV2 extends HTTPResource {
 
 						// Try to determine the content type of the file
 						String rendererMimeType = getRendererMimeType(files.get(0).mimeType(), mediaRenderer);
-						
+
 						if (rendererMimeType != null && !"".equals(rendererMimeType)) {
 							output.setHeader(HttpHeaders.Names.CONTENT_TYPE, rendererMimeType);
 						}
 
 						final DLNAMediaInfo media = dlna.getMedia();
 						if (media != null) {
-							if (StringUtils.isNotBlank(media.container)) {
-								name += " [container: " + media.container + "]";
+							if (StringUtils.isNotBlank(media.getContainer())) {
+								name += " [container: " + media.getContainer() + "]";
 							}
-	
-							if (StringUtils.isNotBlank(media.codecV)) {
-								name += " [video: " + media.codecV + "]";
+
+							if (StringUtils.isNotBlank(media.getCodecV())) {
+								name += " [video: " + media.getCodecV() + "]";
 							}
 						}
-	
+
 						PMS.get().getFrame().setStatusLine("Serving " + name);
-	
-						// Response modes:
-						//   Default          - Content-Length refers to total media size.
-						//   Chunked          - Content-Length refers to chunk size.
+
+						// Response generation:
 						// We use -1 for arithmetic convenience but don't send it as a value. 
 						// If Content-Length < 0 we omit it, for Content-Range we use '*' to signify unspecified.
-						
+
 						boolean chunked = mediaRenderer.isChunkedTransfer();
-						
+
 						// Determine the total size. Note: when transcoding the length is
 						// not known in advance, so DLNAMediaInfo.TRANS_SIZE will be returned instead.
-						
-						long totalsize = files.get(0).length(mediaRenderer);
-						
+
+						long totalsize = dlna.length(mediaRenderer);
+
 						if (chunked && totalsize == DLNAMediaInfo.TRANS_SIZE) {
 							// In chunked mode we try to avoid arbitrary values.
 							totalsize = -1;
 						}
-	
-						long available = inputStream.available();
-						
-						// Determine the current chunk's Content-Length
-						if (chunked) {
-							long requested = highRange - lowRange;
-							if (requested < 0) {
-								// In chunked mode when request is open-ended and totalsize is unknown
-								// we omit Content-Length.
-								CLoverride = (totalsize > 0 ? available : -1);
+
+						long remaining = totalsize - lowRange;
+						long requested = highRange - lowRange;
+
+						if (requested != 0) {
+							// Determine the range (i.e. smaller of known or requested bytes)
+							long bytes = remaining > -1 ? remaining : inputStream.available();
+
+							if (requested > 0 && bytes > requested) {
+								bytes = requested + 1;
+							}
+
+							// Calculate the corresponding highRange (this is usually redundant).
+							highRange = lowRange + bytes - (bytes > 0 ? 1 : 0);
+
+							logger.trace((chunked ? "Using chunked response. " : "")  + "Sending " + bytes + " bytes.");
+
+							output.setHeader(HttpHeaders.Names.CONTENT_RANGE, "bytes " + lowRange + "-" 
+								+ (highRange > -1 ? highRange : "*") + "/" + (totalsize > -1 ? totalsize : "*"));
+
+							// Content-Length refers to the current chunk size here, though in chunked
+							// mode if the request is open-ended and totalsize is unknown we omit it.
+							if (chunked && requested < 0 && totalsize < 0) {
+								CLoverride = -1;
 							} else {
-								requested += (requested > 0 ? 1 : 0);
-								// In chunked mode Content-Length is never more than requested.
-								CLoverride = (available < requested ? available : requested);
+								CLoverride = bytes;
 							}
 						} else {
-							CLoverride = available;
+							// Content-Length refers to the total remaining size of the stream here.
+							CLoverride = remaining;
 						}
-	
+
 						// Calculate the corresponding highRange (this is usually redundant).
 						highRange = lowRange + CLoverride - (CLoverride > 0 ? 1 : 0);
-	
-						if (!chunked) {
-							CLoverride = totalsize;
-						}
-						
-						logger.trace((chunked ? "Using chunked response. " : "")  + "Available Content-Length: " + available);
-	
-						output.setHeader(HttpHeaders.Names.CONTENT_RANGE, "bytes " + lowRange + "-" 
-							+ (highRange > -1 ? highRange : "*") + "/" + (totalsize > -1 ? totalsize : "*"));
-	
+
 						if (contentFeatures != null) {
 							output.setHeader("ContentFeatures.DLNA.ORG", files.get(0).getDlnaContentFeatures());
 						}
-	
+
 						output.setHeader(HttpHeaders.Names.ACCEPT_RANGES, "bytes");
 						output.setHeader(HttpHeaders.Names.CONNECTION, "keep-alive");
 					}
@@ -484,7 +500,7 @@ public class RequestV2 extends HTTPResource {
 				response.append(CRLF);
 				response.append(HTTPXMLHelper.GETSYSTEMUPDATEID_HEADER);
 				response.append(CRLF);
-				response.append("<Id>" + DLNAResource.systemUpdateId + "</Id>");
+				response.append("<Id>" + DLNAResource.getSystemUpdateId() + "</Id>");
 				response.append(CRLF);
 				response.append(HTTPXMLHelper.GETSYSTEMUPDATEID_FOOTER);
 				response.append(CRLF);
@@ -555,19 +571,19 @@ public class RequestV2 extends HTTPResource {
 				String searchCriteria = null;
 				if (xbox && PMS.getConfiguration().getUseCache() && PMS.get().getLibrary() != null && containerID != null) {
 					if (containerID.equals("7") && PMS.get().getLibrary().getAlbumFolder() != null) {
-						objectID = PMS.get().getLibrary().getAlbumFolder().getId();
+						objectID = PMS.get().getLibrary().getAlbumFolder().getResourceId();
 					} else if (containerID.equals("6") && PMS.get().getLibrary().getArtistFolder() != null) {
-						objectID = PMS.get().getLibrary().getArtistFolder().getId();
+						objectID = PMS.get().getLibrary().getArtistFolder().getResourceId();
 					} else if (containerID.equals("5") && PMS.get().getLibrary().getGenreFolder() != null) {
-						objectID = PMS.get().getLibrary().getGenreFolder().getId();
+						objectID = PMS.get().getLibrary().getGenreFolder().getResourceId();
 					} else if (containerID.equals("F") && PMS.get().getLibrary().getPlaylistFolder() != null) {
-						objectID = PMS.get().getLibrary().getPlaylistFolder().getId();
+						objectID = PMS.get().getLibrary().getPlaylistFolder().getResourceId();
 					} else if (containerID.equals("4") && PMS.get().getLibrary().getAllFolder() != null) {
-						objectID = PMS.get().getLibrary().getAllFolder().getId();
+						objectID = PMS.get().getLibrary().getAllFolder().getResourceId();
 					} else if (containerID.equals("1")) {
 						String artist = getEnclosingValue(content, "upnp:artist = &quot;", "&quot;)");
 						if (artist != null) {
-							objectID = PMS.get().getLibrary().getArtistFolder().getId();
+							objectID = PMS.get().getLibrary().getArtistFolder().getResourceId();
 							searchCriteria = artist;
 						}
 					}
@@ -684,7 +700,7 @@ public class RequestV2 extends HTTPResource {
 			response.append("<ContainerUpdateIDs></ContainerUpdateIDs>");
 			response.append("</e:property>");
 			response.append("<e:property>");
-			response.append("<SystemUpdateID>").append(DLNAResource.systemUpdateId).append("</SystemUpdateID>");
+			response.append("<SystemUpdateID>").append(DLNAResource.getSystemUpdateId()).append("</SystemUpdateID>");
 			response.append("</e:property>");
 			response.append("</e:propertyset>");
 		}
@@ -727,11 +743,11 @@ public class RequestV2 extends HTTPResource {
 				output.setHeader(HttpHeaders.Names.CONTENT_LENGTH, "" + cl);
 			}
 
-			if (range.isStartOffsetExists() && dlna != null) {
+			if (range.isStartOffsetAvailable() && dlna != null) {
 				// Add timeseek information headers.
 				String timeseekValue = DLNAMediaInfo.getDurationString(range.getStartOrZero());
 				String timetotalValue = dlna.getMedia().getDurationString();
-				String timeEndValue = range.isEndLimitExists() ? DLNAMediaInfo.getDurationString(range.getEnd()) : timetotalValue;
+				String timeEndValue = range.isEndLimitAvailable() ? DLNAMediaInfo.getDurationString(range.getEnd()) : timetotalValue;
 				output.setHeader("TimeSeekRange.dlna.org", "npt=" + timeseekValue + "-" + timeEndValue + "/" + timetotalValue);
 				output.setHeader("X-Seek-Range", "npt=" + timeseekValue + "-" + timeEndValue + "/" + timetotalValue);
 			}
