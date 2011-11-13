@@ -46,7 +46,7 @@ public class Build {
 
 	private static final String PROFILE_DIRECTORY_NAME = "PMS-SHB"; //$NON-NLS-1$
 	
-	private static final String BUILD_NAME="SHB29";
+	private static final String BUILD_NAME="SHB30";
 	private static final String FULL_NAME="SharkHunter Build";
 
 	public static boolean isUpdatable() {
