@@ -26,11 +26,13 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import net.pms.PMS;
 import net.pms.io.SystemUtils;
@@ -205,6 +207,16 @@ public class PmsConfiguration {
 	private final ProgramPathDisabler programPaths;
 
 	private final IpFilter filter = new IpFilter();
+	
+	/**
+	 * The set of the keys, which change needs reload.
+	 */
+	public static final Set<String> NEED_RELOAD_FLAGS = new HashSet<String>(Arrays.asList(
+			KEY_ALTERNATE_THUMB_FOLDER, KEY_NETWORK_INTERFACE, KEY_IP_FILTER,
+			KEY_SORT_METHOD, KEY_HIDE_EMPTY_FOLDERS, KEY_HIDE_TRANSCODE_FOLDER, KEY_HIDE_MEDIA_LIBRARY_FOLDER, KEY_OPEN_ARCHIVES, KEY_USE_CACHE,
+			KEY_HIDE_ENGINENAMES, KEY_ITUNES_ENABLED, KEY_IPHOTO_ENABLED, KEY_APERTURE_ENABLED, KEY_ENGINES, KEY_FOLDERS, KEY_HIDE_VIDEO_SETTINGS,
+			KEY_AUDIO_THUMBNAILS_METHOD, KEY_NOTRANSCODE, KEY_FORCETRANSCODE, KEY_SERVER_PORT, KEY_SERVER_HOSTNAME, KEY_CHAPTER_SUPPORT,
+			KEY_HIDE_EXTENSIONS));
 
 	/*
 		The following code enables a single setting - PMS_PROFILE - to be used to
@@ -740,7 +752,7 @@ public class PmsConfiguration {
 	 * Some versions of mencoder produce garbled audio because the "ac3" codec is used
 	 * instead of the "ac3_fixed" codec. Returns true if "ac3_fixed" should be used.
 	 * Default is false.
-	 * @see https://code.google.com/p/ps3mediaserver/issues/detail?id=1092#c1
+	 * See https://code.google.com/p/ps3mediaserver/issues/detail?id=1092#c1
 	 * @return True if "ac3_fixed" should be used. 
 	 */
 	public boolean isMencoderAc3Fixed() {
@@ -818,7 +830,7 @@ public class PmsConfiguration {
 	/**
 	 * Some versions of mencoder produce garbled audio because the "ac3" codec is used
 	 * instead of the "ac3_fixed" codec.
-	 * @see https://code.google.com/p/ps3mediaserver/issues/detail?id=1092#c1
+	 * See https://code.google.com/p/ps3mediaserver/issues/detail?id=1092#c1
 	 * @param value Set to true if "ac3_fixed" should be used.
 	 */
 	public void setMencoderAc3Fixed(boolean value) {
@@ -923,7 +935,7 @@ public class PmsConfiguration {
 	 * Older versions of mencoder do not support ASS/SSA subtitles on all
 	 * platforms. Returns true if mencoder supports them. Default is true
 	 * on Windows and OS X, false otherwise.
-	 * @see https://code.google.com/p/ps3mediaserver/issues/detail?id=1097
+	 * See https://code.google.com/p/ps3mediaserver/issues/detail?id=1097
 	 * @return True if mencoder supports ASS/SSA subtitles.
 	 */
 	public boolean isMencoderAss() {
@@ -1834,7 +1846,6 @@ public class PmsConfiguration {
 	public void setUuid(String value){
 		configuration.setProperty(KEY_UUID, value);
 	}
-
 	
 	public void addConfigurationListener(ConfigurationListener l) {
 		configuration.addConfigurationListener(l);
@@ -1900,5 +1911,4 @@ public class PmsConfiguration {
 	public int getRemotePort() {
 		return getInt(KEY_REMOTE_PORT,0);
 	}
-
 }

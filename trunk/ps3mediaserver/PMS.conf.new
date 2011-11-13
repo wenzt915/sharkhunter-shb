@@ -32,3 +32,6 @@ mencoder_noass_scale = 2
 mencoder_noass_subpos = 10
 mencoder_nooutofsync = false
 channels.movieinfo = true
+dbgpack = extras\\channels\\channel.log,pmsencoder.log,plugins\\jumpy\\jumpy.log
+python.path = extras\\Python27\\python
+
