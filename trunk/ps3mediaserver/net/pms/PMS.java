@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.logging.LogManager;
 
@@ -76,12 +77,12 @@ import net.pms.formats.JPG;
 import net.pms.formats.M4A;
 import net.pms.formats.MKV;
 import net.pms.formats.MP3;
-import net.pms.formats.WAV;
 import net.pms.formats.MPG;
 import net.pms.formats.OGG;
 import net.pms.formats.PNG;
 import net.pms.formats.RAW;
 import net.pms.formats.TIF;
+import net.pms.formats.WAV;
 import net.pms.formats.WEB;
 import net.pms.gui.DummyFrame;
 import net.pms.gui.IFrame;
@@ -102,6 +103,7 @@ import net.pms.remote.RemoteClient;
 import net.pms.remote.RemoteServer;
 import net.pms.update.AutoUpdater;
 import net.pms.util.PMSUtil;
+import net.pms.util.PmsProperties;
 import net.pms.util.ProcessUtil;
 import net.pms.util.SystemErrWrapper;
 
@@ -124,11 +126,14 @@ public class PMS {
 	 * Update URL used in the {@link AutoUpdater}.
 	 */
 	private static final String UPDATE_SERVER_URL = "http://ps3mediaserver.googlecode.com/svn/trunk/ps3mediaserver/update2.data";
+
 	/**
-	 * Version showed in the UPnP XML descriptor and logs.
+	 * @deprecated The version has moved to the resources/project.properties file. Use {@link #getVersion()} instead. 
 	 */
 
-	public static  String VERSION = "1.50.0";
+	@Deprecated
+	public static String VERSION;
+
 	public static final String AVS_SEPARATOR = "\1";
 
 	// (innot): The logger used for all logging.
@@ -136,6 +141,11 @@ public class PMS {
 	// TODO(tcox):  This shouldn't be static
 	private static PmsConfiguration configuration;
 
+	/**
+	 * General properties for the PMS project.
+	 */
+	private static PmsProperties projectProperties = new PmsProperties();
+	
 	/**Returns a pointer to the main PMS GUI.
 	 * @return {@link IFrame} Main PMS window.
 	 */
@@ -345,12 +355,14 @@ public class PMS {
 	 * @throws Exception
 	 */
 	private boolean init() throws Exception {
-		setVersion();
 		AutoUpdater autoUpdater = null;
 
+		// Read the project properties resource file.
+		initProjectProperties();
+		
 		if (Build.isUpdatable()) {
 			String serverURL = Build.getUpdateServerURL();
-			autoUpdater = new AutoUpdater(serverURL, VERSION);
+			autoUpdater = new AutoUpdater(serverURL, getVersion());
 		}
 
 		registry = createSystemUtils();
@@ -378,7 +390,7 @@ public class PMS {
 		frame.setStatusCode(0, Messages.getString("PMS.130"), "connect_no-220.png");
 		proxy = -1;
 
-		logger.info("Starting PS3 Media Server " + VERSION);
+		logger.info("Starting PS3 Media Server " + getVersion());
 		logger.info("by shagrath / 2008-2011");
 		logger.info("http://ps3mediaserver.org");
 		logger.info("http://code.google.com/p/ps3mediaserver");
@@ -894,7 +906,7 @@ public class PMS {
 			sb.append(System.getProperty("os.arch").replace(" ", "_"));
 			sb.append("-");
 			sb.append(System.getProperty("os.version").replace(" ", "_"));
-			sb.append(", UPnP/1.0, PMS/" + VERSION);
+			sb.append(", UPnP/1.0, PMS/" + getVersion());
 			serverName = sb.toString();
 		}
 		return serverName;
@@ -1124,14 +1136,36 @@ public class PMS {
 		remClient.setBitRate(r,s);
 	}
 	
-	private void setVersion() {
-		String res="";
-		if(Build.getName()!=null)
-			res="("+Build.getName()+") ";
-		res=res+VERSION;
-		if(Build.getShortName()!=null)
-			res=res+" - "+Build.getShortName();
-		VERSION=res;
+	/**
+	 * Returns the project properties object.
+	 *
+	 * @return The properties object.
+	 */
+	private static PmsProperties getProjectProperties() {
+		return projectProperties;
+	}
+
+	/**
+	 * Returns the project version for PMS.
+	 *
+	 * @return The project version.
+	 */
+	public static String getVersion() {
+		return getProjectProperties().get("project.version")+" - "+Build.getShortName();
+	}
+
+	/**
+	 * Reads the properties file with project specific settings.
+	 */
+	private void initProjectProperties() {
+		try {
+			// Read project properties resource file.
+			getProjectProperties().loadFromResourceFile("/resources/project.properties");
+
+			// Temporary fix for backwards compatibility
+			VERSION = getVersion();
+		} catch (IOException e) {
+			logger.error("Could not load project.properties");
+		}
 	}
 }
-

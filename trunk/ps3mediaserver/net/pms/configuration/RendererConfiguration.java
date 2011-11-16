@@ -1,6 +1,7 @@
 package net.pms.configuration;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import net.pms.dlna.RootFolder;
 import net.pms.formats.Format;
 import net.pms.network.HTTPResource;
 import net.pms.network.SpeedStats;
+import net.pms.util.PmsProperties;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
@@ -33,6 +35,7 @@ public class RendererConfiguration {
 	private static ArrayList<RendererConfiguration> renderersConfs;
 	private static RendererConfiguration defaultConf;
 	private static Map<InetAddress, RendererConfiguration> addressAssociation = new HashMap<InetAddress, RendererConfiguration>();
+	private static PmsProperties projectProperties = new PmsProperties();
 
 	public static RendererConfiguration getDefaultConf() {
 		return defaultConf;
@@ -45,12 +48,20 @@ public class RendererConfiguration {
 		} catch (ConfigurationException e) {
 		}
 
-		File renderersDir = new File("renderers");
+		try {
+			// Read project properties resource file.
+			projectProperties.loadFromResourceFile("/resources/project.properties");
+		} catch (IOException e) {
+			logger.error("Error loading renderer configurations: could not load project.properties");
+			return;
+		}
+
+		File renderersDir = new File(projectProperties.get("project.renderers.dir"));
 
 		if (renderersDir.exists() && renderersDir.isDirectory()) {
 			logger.info("Loading renderer configurations from " + renderersDir.getAbsolutePath());
 
-			File confs[] = renderersDir.listFiles();
+			File[] confs = renderersDir.listFiles();
 			int rank = 1;
 			for (File f : confs) {
 				if (f.getName().endsWith(".conf")) {
@@ -116,14 +127,13 @@ public class RendererConfiguration {
 
 	private static RendererConfiguration manageRendererMatch(RendererConfiguration r) {
 		if (addressAssociation.values().contains(r)) {
-
 			// FIXME: This cannot ever ever happen because of how renderer matching
 			// is implemented in RequestHandler and RequestHandlerV2. The first header
 			// match will associate the IP address with the renderer and from then on
 			// all other requests from the same IP address will be recognized based on
 			// that association. Headers will be ignored and unfortunately they happen
 			// to be the only way to get here.
-			//logger.info("Another renderer like " + r.getRendererName() + " was found!");
+//			logger.info("Another renderer like " + r.getRendererName() + " was found!");
 		}
 		return r;
 	}
