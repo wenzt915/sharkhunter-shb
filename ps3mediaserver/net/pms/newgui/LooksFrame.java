@@ -55,6 +55,7 @@ import javax.swing.plaf.metal.MetalLookAndFeel;
 
 import net.pms.Messages;
 import net.pms.PMS;
+import net.pms.configuration.Build;
 import net.pms.configuration.PmsConfiguration;
 import net.pms.gui.IFrame;
 import net.pms.io.WindowsNamedPipe;
@@ -263,7 +264,8 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 			setContentPane(jp);
 		}
 
-		this.setTitle("PS3 Media Server " + PMS.VERSION + " - FOR TESTING ONLY, POSSIBLY UNSTABLE");
+		this.setTitle("PS3 Media Server ("
+				+Build.getName()+")"+ PMS.getVersion() + " - FOR TESTING ONLY, POSSIBLY UNSTABLE");
 		this.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 		Dimension screenSize = getToolkit().getScreenSize();
 
@@ -405,6 +407,16 @@ public class LooksFrame extends JFrame implements IFrame, Observer {
 		st.getJpb().setString(msg);
 	}
 
+	/**
+	 * This method is being called when a configuration change requiring
+	 * a restart of the HTTP server has been done by the user. It should notify the user
+	 * to restart the server.<br>
+	 * Currently the icon as well as the tool tip text of the restart button is being 
+	 * changed.<br>
+	 * The actions requiring a server restart are defined by {@link PmsConfiguration#NEED_RELOAD_FLAGS}
+	 * 
+	 * @param b true if the server has to be restarted, false otherwise
+	 */
 	@Override
 	public void setReloadable(boolean b) {
 		if(b) {

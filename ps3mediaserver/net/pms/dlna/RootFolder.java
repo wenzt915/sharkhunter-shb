@@ -819,6 +819,8 @@ public class RootFolder extends DLNAResource {
 				}
 			} else if (listener instanceof AdditionalFoldersAtRoot) {
 				java.util.Iterator<DLNAResource> folders = ((AdditionalFoldersAtRoot) listener).getChildren();
+				if(folders==null)
+					continue;
 				while (folders.hasNext()) {
 					DLNAResource resource = folders.next();
 					try {

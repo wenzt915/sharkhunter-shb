@@ -18,8 +18,6 @@
  */
 package net.pms.configuration;
 
-import java.awt.Color;
-import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -209,7 +207,7 @@ public class PmsConfiguration {
 	private final IpFilter filter = new IpFilter();
 	
 	/**
-	 * The set of the keys, which change needs reload.
+	 * The set of the keys defining when the HTTP server has to restarted due to a configuration change
 	 */
 	public static final Set<String> NEED_RELOAD_FLAGS = new HashSet<String>(Arrays.asList(
 			KEY_ALTERNATE_THUMB_FOLDER, KEY_NETWORK_INTERFACE, KEY_IP_FILTER,
@@ -1754,11 +1752,7 @@ public class PmsConfiguration {
 	}
 
 	public int getSubsColor() {
-		if (!GraphicsEnvironment.isHeadless()) {
-			return getInt(KEY_SUBS_COLOR, Color.WHITE.getRGB());
-		} else {
-			return 0xffffff;
-		}
+		return getInt(KEY_SUBS_COLOR, 0xffffffff);
 	}
 
 	public void setSubsColor(int value) {
