@@ -560,6 +560,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 								VirtualFolder fileFolder = new FileTranscodeVirtualFolder(child.getName(), null);
 
 								DLNAResource newChild = (DLNAResource) child.clone();
+								newChild.setId(null);
 								newChild.setPlayer(pl);
 								newChild.setMedia(child.getMedia());
 								// newChild.original = child;
@@ -1408,6 +1409,10 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		new Thread(defer).start();
 	}
 
+	public InputStream getInputStream(long low,long high,double timeseek, RendererConfiguration mediarenderer) throws IOException {
+		return null;
+	}
+	
 	/**Returns an InputStream of this DLNAResource that starts at a given time, if possible. Very useful if video chapters are being used.
 	 * @param range
 	 * @param mediarenderer

@@ -13,7 +13,7 @@ public class Build {
 	 * Can be null/empty if not used. Not used if IS_UPDATABLE is set to false.
 	 */
 
-	private static final String UPDATE_SERVER_URL = REPO + "/update/update_2.properties";
+	private static final String UPDATE_SERVER_URL = REPO + "/update/update_3.properties";
 
 	// if false, manual and automatic update checks are unconditionally disabled
 	private static final boolean IS_UPDATABLE = false;
@@ -46,7 +46,7 @@ public class Build {
 
 	private static final String PROFILE_DIRECTORY_NAME = "PMS-SHB"; //$NON-NLS-1$
 	
-	private static final String BUILD_NAME="SHB31";
+	private static final String BUILD_NAME="SHB32";
 	private static final String FULL_NAME="SharkHunter Build";
 
 	public static boolean isUpdatable() {
