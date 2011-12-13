@@ -1,5 +1,6 @@
 import os, sys
 import urllib, re
+from urlparse import urlparse
 
 import jumpy, xbmcinit, xbmc
 
@@ -76,7 +77,7 @@ sys.argv.append(argv[0])
 sys.argv.append('0')
 sys.argv.append("" if len(argv) == 1 else "?" + argv[1])
 
-# added function
+# added functions
 
 def getMediaType(listitem):
 	itemtype = listitem.getProperty('type').strip().upper()
@@ -86,6 +87,16 @@ def getMediaType(listitem):
 		return PMS_AUDIO
 	else:
 		return PMS_UNRESOLVED
+
+def fullPath(base, path):
+#	print 'fullPath %s' % [base, path]
+	if path == None:
+		return None
+	if urlparse(path).scheme == "" and not os.path.isabs(path):
+		url = urlparse(base)
+		path = '%s://%s/%s' % (url.scheme, url.netloc, path) if url.scheme != ""  \
+			else os.path.join(os.path.dirname(base), path)
+	return xbmc.translatePath(path, False)
 
 # native xbmc functions
 
@@ -102,7 +113,7 @@ def addDirectoryItem(handle, url, listitem, isFolder=False, totalItems=None):
 			return True
 	pms.addItem(itemtype, listitem.getLabel(), 
 		[argv0, url] if itemtype < 0 else url, 
-		xbmc.translatePath(listitem.getProperty('thumbnailImage')))
+		fullPath(url, listitem.getProperty('thumbnailImage')))
 	return True
 
 def addDirectoryItems(handle, items, totalItems=None):
@@ -132,21 +143,49 @@ def setResolvedUrl(handle, succeeded, listitem, stack=-1):
 	name = name + "" if stack < 1 else " %d" % stack
 	
 	if url.startswith('rtmp'):
-		live = True if url.find(" live=true") > -1 else False
-		swfVfy = True if url.find(" swfvfy=true") > -1 else False
-		url = url.replace(" playpath=", " -y=").replace(" swfurl=", " -W=" if swfVfy else " -s=").replace(" app=", " -a=").replace(" pageurl=", " -p=").replace(" swfvfy=true", " ").replace(" live=true", " ")
-		args = re.findall(r'(-\w)=(".*?"|\S+)', '-r=' + url)
-		url = "rtmpdump://rtmp2pms?" + ('-v&' if live else '') + urllib.urlencode(args)
-#		cmd = "rtmpdump " + ('-v ' if live else '') 
-#		for arg,val in args:
-#			cmd = cmd + '%s "%s"' % (arg,val)
-#		print "test cmd: %s\n" %  cmd
+		sargs = []
+		args = []
+		tups = re.findall(r' ([-\w]+)=(".*?"|\S+)', ' -r=' + url)
+		# see xbmc/cores/dvdplayer/DVDInputStreams/DVDInputStreamRTMP.cpp:120
+		for key,tag in [
+				( "SWFPlayer", "swfUrl"),
+				( "PageURL",   "pageUrl"),
+				( "PlayPath",  "playpath"),
+				( "TcUrl",     "tcUrl"),
+				( "IsLive",    "live")
+			]:
+				try:
+					tups.append((tag, listitem.getProperty(key)))
+				except KeyError:
+					pass
+		swfVfy = True if url.lower().replace('=1', '=true').find(" swfvfy=true") > -1 else False
+		opts = {
+			'swfurl'    : '-W' if swfVfy else '-s',
+			'playpath'  : '-y',
+			'app'       : '-a',
+			'pageurl'   : '-p',
+			'tcurl'     : '-t',
+			'subscribe' : '-d',
+			'live'      : '-v',
+			'playlist'  : '-Y'
+		}
+		for key,val in tups:
+			if key.lower() in opts:
+				key = opts[key.lower()]
+			if val == '1' or val.lower() == 'true':
+				if key.lower() != 'swfvfy':
+					sargs.append(key)
+			else:
+				args.append((key,val))
+		url = "rtmpdump://rtmp2pms?" + urllib.urlencode(args) + (('&' + '&'.join(sargs)) if len(sargs) else '')
+		cmd = "rtmpdump " + ' '.join('%s "%s"' % arg for arg in args) + ' ' + ' '.join(sargs)
+		print "test cmd: %s\n" %  cmd
+
 	else:
-		url = unicode(url.split(' | ')[0])
+		url = url.split(' | ')[0]
 	
 	if url.startswith('plugin://'):
-#		dir = os.path.dirname(xbmc.translatePath(url.split('?')[0]))
-		dir = xbmc.translatePath(url.split('?')[0])
+		dir = os.path.dirname(xbmc.translatePath(url.split('?')[0]))
 		id, name, script, thumb, path = xbmcinit.read_addon(dir)
 		pms.setPath(path)
 		url = [script, url]
@@ -154,7 +193,7 @@ def setResolvedUrl(handle, succeeded, listitem, stack=-1):
 	else:
 		media = getMediaType(listitem)
 
-	pms.addItem(media, name, url, xbmc.translatePath(listitem.getProperty('thumbnailImage')))
+	pms.addItem(media, name, url, fullPath(url, listitem.getProperty('thumbnailImage')))
 	print "*** setResolvedUrl ***"
 	print "raw : %s" % listitem.getProperty('path')
 	print "name: %s" % name
