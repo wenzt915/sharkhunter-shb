@@ -5,14 +5,16 @@ import xbmc.xbmcinit
 
 if len(sys.argv) == 1:
 	
+	print 'jumpy-xbmc version %s\n' % xbmc.xbmcinit.version
+	
 	home = os.path.join(os.path.split(sys.argv[0])[0], 'xbmc')
 	addonsdir = os.path.join(_special['home'], 'addons')
-	#addonsdir = os.path.join(_special['home'], 'plugins')
-
 	
 	if not os.path.isdir(addonsdir):
 		print "Error: can't find xbmc addons dir at '%s'." % addonsdir
 		sys.exit(-1)
+	else:
+		print "found xbmc addons dir at '%s'.\n" % addonsdir
 	
 	for dir in os.listdir(addonsdir):
 		dir = os.path.join(addonsdir, dir)

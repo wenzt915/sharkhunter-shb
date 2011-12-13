@@ -1076,12 +1076,17 @@ public class PMS {
 		return foundRenderers;
 	}
 	
-	private static void killOld() throws IOException {
+	private static void killOld() {
 		try {
 			killProc();
 		} catch (IOException e) {
+			debug("error killing old proc "+e);
 		}
-		dumpPid();
+		try {
+			dumpPid();
+		} catch (IOException e) {
+			debug("error dumping pid "+e);
+		}
 	}
 	
 	private static void killProc() throws IOException {
