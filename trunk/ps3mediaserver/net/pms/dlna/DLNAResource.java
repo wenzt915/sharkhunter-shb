@@ -1231,6 +1231,21 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		}
 
 		String thumbURL = getThumbnailURL();
+		String thumbMode = (String)PMS.getConfiguration().getCustomProperty("thumb_mode");
+		if(thumbMode!=null) {
+			if(thumbMode.equals("never"))
+				thumbURL=null;	
+			else if((thumbMode.equals("media")&&isFolder())||mediaRenderer.isPS3()) // PS3 don't do folder thumbs
+				thumbURL=null;
+			else if(thumbMode.equals("noimage")&&getType()==Format.IMAGE)
+				thumbURL=null;
+			else if(thumbMode.equals("novideo")&&getType()==Format.VIDEO)
+				thumbURL=null;
+			else if(thumbMode.equals("noaudio")&&getType()==Format.AUDIO)
+				thumbURL=null;
+			else if(thumbMode.equals("last")&&!lastThumb())
+				thumbURL=null;
+		}
 		if (!isFolder() && (getExt() == null || (getExt() != null && thumbURL != null))) {
 			openTag(sb, "upnp:albumArtURI");
 			addAttribute(sb, "xmlns:dlna", "urn:schemas-dlna-org:metadata-1-0/");
@@ -2122,6 +2137,10 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 	
 	public OutputStream upload(String name) {
 		return null;
+	}
+	
+	public boolean lastThumb() {
+		return false;
 	}
 }
 
